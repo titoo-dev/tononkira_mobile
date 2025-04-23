@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Artist {
+  id        Int      @id @default(autoincrement())
+  name      String
+  bio       String?
+  url       String?
+  slug      String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  songs     Song[]   @relation("ArtistToSong")
+
+  @@index([name])
+}
+
+model Song {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String
+  trackNumber Int?
+  views       Int?     @default(0)
+  lyricId     Int?     @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lyric       Lyric?   @relation(fields: [lyricId], references: [id])
+  artists     Artist[] @relation("ArtistToSong")
+}
+
+model LikedSong {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  songId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, songId])
+}
+
+model Lyric {
+  id          Int      @id @default(autoincrement())
+  content     String
+  contentText String?
+  url         String
+  language    String   @default("mg")
+  createdBy   String
+  isSynced    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  song        Song?
+}
