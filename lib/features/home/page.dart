@@ -12,6 +12,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _searchController = TextEditingController();
+  int _selectedIndex = 0;
 
   // Sample data for demonstration
   final List<Song> _featuredSongs = [
@@ -82,8 +83,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: colorScheme.background,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -100,29 +104,36 @@ class _MyHomePageState extends State<MyHomePage> {
                         Expanded(
                           child: Text(
                             widget.title,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.headlineMedium?.copyWith(
+                            style: textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
+                              color: colorScheme.primary,
                             ),
                           ),
                         ),
                         // Profile Icon Button
-                        IconButton(
-                          icon: const CircleAvatar(
-                            radius: 16,
-                            backgroundImage: NetworkImage(
-                              "https://source.unsplash.com/random/100x100/?person",
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: colorScheme.primary.withOpacity(0.5),
+                              width: 2,
                             ),
                           ),
-                          onPressed: () {},
+                          child: IconButton(
+                            icon: const CircleAvatar(
+                              radius: 16,
+                              backgroundImage: NetworkImage(
+                                "https://source.unsplash.com/random/100x100/?person",
+                              ),
+                            ),
+                            onPressed: () {},
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     // Modern Animated Search Bar
-                    _buildSearchBar(),
+                    _buildSearchBar(colorScheme),
                   ],
                 ),
               ),
@@ -137,11 +148,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     Text(
                       "Featured Lyrics",
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      style: textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    TextButton(onPressed: () {}, child: const Text("See All")),
+                    TextButton(
+                      onPressed: () {},
+                      child: Text(
+                        "See All",
+                        style: TextStyle(color: colorScheme.primary),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -157,7 +174,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   itemCount: _featuredSongs.length,
                   itemBuilder: (context, index) {
                     final song = _featuredSongs[index];
-                    return _buildFeaturedSongCard(song);
+                    return _buildFeaturedSongCard(song, colorScheme);
                   },
                 ),
               ),
@@ -169,9 +186,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                 child: Text(
                   "Popular Artists",
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -186,23 +203,28 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     _buildArtistChip(
                       "Mahaleo",
-                      "https://source.unsplash.com/random/100x100/?artist,1",
+                      'https://i1.sndcdn.com/artworks-000147146077-a0h5gs-t500x500.jpg',
+                      colorScheme,
                     ),
                     _buildArtistChip(
                       "Ambondrona",
-                      "https://source.unsplash.com/random/100x100/?artist,2",
+                      'https://la1ere.francetvinfo.fr/image/ygcCMkxXTPdYXcsmZx2K_5xyfEU/600x400/outremer/2023/08/31/groupe-malgasy-64f06d75f1021368806331.jpg',
+                      colorScheme,
                     ),
                     _buildArtistChip(
                       "Ny Ainga",
-                      "https://source.unsplash.com/random/100x100/?artist,3",
+                      'https://www.matin.mg/wp-content/uploads/2016/07/ny-ainga-ok.jpg',
+                      colorScheme,
                     ),
                     _buildArtistChip(
                       "The Dizzy Brains",
-                      "https://source.unsplash.com/random/100x100/?artist,4",
+                      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJ_u7Edm2MGvnl7c3B5uJ9lfcx5lda332IRkOLEU-bmum1DygX87y0fXU8l4xOjk-477s&usqp=CAU',
+                      colorScheme,
                     ),
                     _buildArtistChip(
                       "Bodo",
-                      "https://source.unsplash.com/random/100x100/?artist,5",
+                      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAC5LhdLol5Nia_KmfZk8shgweMwahUOPfA3MP84pTTAQec54kYfoRsf9J1dQcQeD9iwI&usqp=CAU',
+                      colorScheme,
                     ),
                   ],
                 ),
@@ -215,9 +237,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
                 child: Text(
                   "Recent Lyrics",
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -226,7 +248,7 @@ class _MyHomePageState extends State<MyHomePage> {
             SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final song = _featuredSongs[index % _featuredSongs.length];
-                return _buildRecentLyricItem(song);
+                return _buildRecentLyricItem(song, colorScheme);
               }, childCount: 10),
             ),
 
@@ -237,6 +259,15 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       // Bottom Navigation Bar
       bottomNavigationBar: NavigationBar(
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        backgroundColor: colorScheme.surface,
+        indicatorColor: colorScheme.secondaryContainer,
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -259,76 +290,87 @@ class _MyHomePageState extends State<MyHomePage> {
             label: 'Profile',
           ),
         ],
-        selectedIndex: 0,
-        onDestinationSelected: (index) {},
       ),
     );
   }
 
-  // Modern animated search bar with rounded edges and subtle shadow
-  Widget _buildSearchBar() {
+  // Modern search bar with rounded edges following Material 3 design
+  Widget _buildSearchBar(ColorScheme colorScheme) {
     return Hero(
       tag: 'searchBar',
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-            width: 1,
-          ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+          color: colorScheme.surfaceVariant.withOpacity(0.5),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Row(
-            children: [
-              Icon(Icons.search, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search for lyrics, artists...',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
-                    ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Row(
+          children: [
+            Icon(Icons.search, color: colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search for lyrics, artists...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                    color: colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.mic,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                onPressed: () {},
-              ),
-            ],
-          ),
+            ),
+            IconButton(
+              icon: Icon(Icons.mic, color: colorScheme.primary),
+              onPressed: () {},
+              tooltip: 'Voice search',
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Featured song card with gradient overlay and artist image
-  Widget _buildFeaturedSongCard(Song song) {
+  // Featured song card with Material 3 styling
+  Widget _buildFeaturedSongCard(Song song, ColorScheme colorScheme) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       width: 160,
       child: Card(
         clipBehavior: Clip.antiAlias,
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: colorScheme.outline.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [
             // Artist Image
             song.artists.isNotEmpty && song.artists.first.imageUrl != null
-                ? Image.network(song.artists.first.imageUrl!, fit: BoxFit.cover)
+                ? Image.network(
+                  song.artists.first.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: colorScheme.primaryContainer,
+                      child: Icon(
+                        Icons.image_not_supported,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    );
+                  },
+                )
                 : Container(
-                  color: Theme.of(context).colorScheme.primaryContainer,
+                  color: colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.music_note,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
                 ),
 
             // Gradient Overlay
@@ -337,7 +379,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                  colors: [
+                    Colors.transparent,
+                    colorScheme.inverseSurface.withOpacity(0.7),
+                  ],
                 ),
               ),
             ),
@@ -351,8 +396,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: [
                   Text(
                     song.title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: colorScheme.onInverseSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -364,7 +409,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ? Text(
                         song.artists.first.name,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: colorScheme.onInverseSurface.withOpacity(0.8),
                           fontSize: 14,
                         ),
                         maxLines: 1,
@@ -377,13 +422,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       Icon(
                         Icons.remove_red_eye,
                         size: 14,
-                        color: Colors.white.withOpacity(0.6),
+                        color: colorScheme.onInverseSurface.withOpacity(0.6),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         "${song.views ?? 0}",
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: colorScheme.onInverseSurface.withOpacity(0.6),
                           fontSize: 12,
                         ),
                       ),
@@ -398,55 +443,78 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // Artist chip with circular image and name
-  Widget _buildArtistChip(String name, String imageUrl) {
+  // Artist chip with circular image and name using theme's chip style
+  Widget _buildArtistChip(
+    String name,
+    String imageUrl,
+    ColorScheme colorScheme,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(right: 12),
-      child: Chip(
-        avatar: CircleAvatar(backgroundImage: NetworkImage(imageUrl)),
+      child: FilterChip(
+        avatar: CircleAvatar(
+          backgroundImage: NetworkImage(imageUrl),
+          backgroundColor: colorScheme.primaryContainer,
+        ),
         label: Text(name),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        labelStyle: TextStyle(fontWeight: FontWeight.w500),
+        selected: false,
+        onSelected: (bool selected) {},
       ),
     );
   }
 
-  // Recent lyric item with list tile design
-  Widget _buildRecentLyricItem(Song song) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child:
-            song.artists.isNotEmpty && song.artists.first.imageUrl != null
-                ? Image.network(
-                  song.artists.first.imageUrl!,
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                )
-                : Container(
-                  width: 56,
-                  height: 56,
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  child: Icon(
-                    Icons.music_note,
-                    color: Theme.of(context).colorScheme.primary,
+  // Recent lyric item with Material 3 list tile design
+  Widget _buildRecentLyricItem(Song song, ColorScheme colorScheme) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      elevation: 0,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child:
+              song.artists.isNotEmpty && song.artists.first.imageUrl != null
+                  ? Image.network(
+                    song.artists.first.imageUrl!,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 56,
+                        height: 56,
+                        color: colorScheme.primaryContainer,
+                        child: Icon(
+                          Icons.music_note,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      );
+                    },
+                  )
+                  : Container(
+                    width: 56,
+                    height: 56,
+                    color: colorScheme.primaryContainer,
+                    child: Icon(
+                      Icons.music_note,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
                   ),
-                ),
-      ),
-      title: Text(
-        song.title,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: song.artists.isNotEmpty ? Text(song.artists.first.name) : null,
-      trailing: IconButton(
-        icon: Icon(
-          Icons.favorite_outline,
-          color: Theme.of(context).colorScheme.primary,
         ),
-        onPressed: () {},
+        title: Text(
+          song.title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle:
+            song.artists.isNotEmpty ? Text(song.artists.first.name) : null,
+        trailing: IconButton(
+          icon: Icon(Icons.favorite_outline, color: colorScheme.primary),
+          onPressed: () {},
+          tooltip: 'Add to favorites',
+        ),
+        onTap: () {},
       ),
-      onTap: () {},
     );
   }
 }
