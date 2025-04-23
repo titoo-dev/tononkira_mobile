@@ -107,6 +107,8 @@ class _HomeTabState extends State<HomeTab> {
             // Recent Lyrics Section Header
             SliverToBoxAdapter(child: SectionHeader(title: "Recent Lyrics")),
 
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+
             // Recent Lyrics List
             SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
@@ -629,10 +631,10 @@ class RecentLyricItem extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       elevation: 0,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: SizedBox(
