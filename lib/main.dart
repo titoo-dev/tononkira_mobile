@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tononkira_mobile/config/app_theme.dart';
-import 'package:tononkira_mobile/features/home/page.dart';
+import 'package:tononkira_mobile/config/routes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,11 +11,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
+    return MaterialApp.router(
+      title: 'Tononkira',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: const MyHomePage(title: 'Tononkira'),
+      // Use the router configuration from AppRoutes
+      routerConfig: AppRoutes.router,
     );
   }
 }

@@ -3,18 +3,15 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:tononkira_mobile/models/models.dart';
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+class HomeTab extends StatefulWidget {
+  const HomeTab({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<HomeTab> createState() => _HomeTabState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _HomeTabState extends State<HomeTab> {
   final TextEditingController _searchController = TextEditingController();
-  int _selectedIndex = 0;
 
   // Sample data for demonstration
   final List<Song> _featuredSongs = [
@@ -95,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
             // App Bar with Search
             SliverToBoxAdapter(
               child: HomeAppBar(
-                title: widget.title,
+                title: 'Tononkira',
                 searchController: _searchController,
               ),
             ),
@@ -122,15 +119,6 @@ class _MyHomePageState extends State<MyHomePage> {
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
         ),
-      ),
-      // Bottom Navigation Bar
-      bottomNavigationBar: HomeBottomNavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
       ),
     );
   }
@@ -674,11 +662,11 @@ class RecentLyricItem extends StatelessWidget {
 }
 
 /// Bottom navigation bar for the app
-class HomeBottomNavigationBar extends StatelessWidget {
+class MainBottomNavigationBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
-  const HomeBottomNavigationBar({
+  const MainBottomNavigationBar({
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
@@ -701,9 +689,9 @@ class HomeBottomNavigationBar extends StatelessWidget {
           label: 'Home',
         ),
         NavigationDestination(
-          icon: Icon(Icons.explore_outlined),
-          selectedIcon: Icon(Icons.explore),
-          label: 'Discover',
+          icon: Icon(Icons.music_note_outlined),
+          selectedIcon: Icon(Icons.music_note),
+          label: 'Lyrics',
         ),
         NavigationDestination(
           icon: Icon(Icons.favorite_outline),
