@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:tononkira_mobile/models/models.dart';
 
@@ -84,7 +86,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -93,162 +94,27 @@ class _MyHomePageState extends State<MyHomePage> {
           slivers: [
             // App Bar with Search
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        // App Logo/Title
-                        Expanded(
-                          child: Text(
-                            widget.title,
-                            style: textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                        // Profile Icon Button
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: colorScheme.primary.withOpacity(0.5),
-                              width: 2,
-                            ),
-                          ),
-                          child: IconButton(
-                            icon: const CircleAvatar(
-                              radius: 16,
-                              backgroundImage: NetworkImage(
-                                "https://source.unsplash.com/random/100x100/?person",
-                              ),
-                            ),
-                            onPressed: () {},
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Modern Animated Search Bar
-                    _buildSearchBar(colorScheme),
-                  ],
-                ),
+              child: HomeAppBar(
+                title: widget.title,
+                searchController: _searchController,
               ),
             ),
 
-            // Featured Section Header
+            // Featured Section
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Featured Lyrics",
-                      style: textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        "See All",
-                        style: TextStyle(color: colorScheme.primary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: FeaturedSection(featuredSongs: _featuredSongs),
             ),
 
-            // Featured Lyrics Cards
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 220,
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _featuredSongs.length,
-                  itemBuilder: (context, index) {
-                    final song = _featuredSongs[index];
-                    return _buildFeaturedSongCard(song, colorScheme);
-                  },
-                ),
-              ),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-            // Popular Artists Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                child: Text(
-                  "Popular Artists",
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-
-            // Artist Chips
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 60,
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _buildArtistChip(
-                      "Mahaleo",
-                      'https://i1.sndcdn.com/artworks-000147146077-a0h5gs-t500x500.jpg',
-                      colorScheme,
-                    ),
-                    _buildArtistChip(
-                      "Ambondrona",
-                      'https://la1ere.francetvinfo.fr/image/ygcCMkxXTPdYXcsmZx2K_5xyfEU/600x400/outremer/2023/08/31/groupe-malgasy-64f06d75f1021368806331.jpg',
-                      colorScheme,
-                    ),
-                    _buildArtistChip(
-                      "Ny Ainga",
-                      'https://www.matin.mg/wp-content/uploads/2016/07/ny-ainga-ok.jpg',
-                      colorScheme,
-                    ),
-                    _buildArtistChip(
-                      "The Dizzy Brains",
-                      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJ_u7Edm2MGvnl7c3B5uJ9lfcx5lda332IRkOLEU-bmum1DygX87y0fXU8l4xOjk-477s&usqp=CAU',
-                      colorScheme,
-                    ),
-                    _buildArtistChip(
-                      "Bodo",
-                      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAC5LhdLol5Nia_KmfZk8shgweMwahUOPfA3MP84pTTAQec54kYfoRsf9J1dQcQeD9iwI&usqp=CAU',
-                      colorScheme,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Recent Lyrics Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                child: Text(
-                  "Recent Lyrics",
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
+            // Recent Lyrics Section Header
+            SliverToBoxAdapter(child: SectionHeader(title: "Recent Lyrics")),
 
             // Recent Lyrics List
             SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final song = _featuredSongs[index % _featuredSongs.length];
-                return _buildRecentLyricItem(song, colorScheme);
+                return RecentLyricItem(song: song);
               }, childCount: 10),
             ),
 
@@ -258,44 +124,103 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       // Bottom Navigation Bar
-      bottomNavigationBar: NavigationBar(
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-        backgroundColor: colorScheme.surface,
-        indicatorColor: colorScheme.secondaryContainer,
+      bottomNavigationBar: HomeBottomNavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+      ),
+    );
+  }
+}
+
+/// App bar component with title and search functionality
+class HomeAppBar extends StatelessWidget {
+  final String title;
+  final TextEditingController searchController;
+
+  const HomeAppBar({
+    super.key,
+    required this.title,
+    required this.searchController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // App Logo/Title
+              Expanded(
+                child: Text(
+                  title,
+                  style: textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ),
+              // Profile Icon Button
+              ProfileButton(),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore),
-            label: 'Discover',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.favorite_outline),
-            selectedIcon: Icon(Icons.favorite),
-            label: 'Favorites',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          const SizedBox(height: 16),
+          // Modern Animated Search Bar
+          SearchBar(controller: searchController),
         ],
       ),
     );
   }
+}
 
-  // Modern search bar with rounded edges following Material 3 design
-  Widget _buildSearchBar(ColorScheme colorScheme) {
+/// Profile button with circular avatar and border
+class ProfileButton extends StatelessWidget {
+  const ProfileButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: colorScheme.primary.withOpacity(0.5),
+          width: 2,
+        ),
+      ),
+      child: IconButton(
+        icon: const CircleAvatar(
+          radius: 16,
+          backgroundImage: NetworkImage(
+            "https://source.unsplash.com/random/100x100/?person",
+          ),
+        ),
+        onPressed: () {},
+      ),
+    );
+  }
+}
+
+/// Modern search bar with rounded edges following Material 3 design
+class SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+
+  const SearchBar({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Hero(
       tag: 'searchBar',
       child: Container(
@@ -311,7 +236,7 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(width: 12),
             Expanded(
               child: TextField(
-                controller: _searchController,
+                controller: controller,
                 decoration: InputDecoration(
                   hintText: 'Search for lyrics, artists...',
                   border: InputBorder.none,
@@ -331,15 +256,119 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+}
 
-  // Featured song card with Material 3 styling
-  Widget _buildFeaturedSongCard(Song song, ColorScheme colorScheme) {
+/// Featured section with header and horizontal scrollable song cards
+class FeaturedSection extends StatelessWidget {
+  final List<Song> featuredSongs;
+
+  const FeaturedSection({super.key, required this.featuredSongs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Featured Section Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: SectionHeaderWithAction(
+            title: "Featured Lyrics",
+            actionLabel: "See All",
+            onActionPressed: () {},
+          ),
+        ),
+
+        // Featured Lyrics Cards
+        SizedBox(
+          height: 220,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            scrollDirection: Axis.horizontal,
+            itemCount: featuredSongs.length,
+            itemBuilder: (context, index) {
+              return FeaturedSongCard(song: featuredSongs[index]);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Section header with title and optional action button
+class SectionHeaderWithAction extends StatelessWidget {
+  final String title;
+  final String actionLabel;
+  final VoidCallback onActionPressed;
+
+  const SectionHeaderWithAction({
+    super.key,
+    required this.title,
+    required this.actionLabel,
+    required this.onActionPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        TextButton(
+          onPressed: onActionPressed,
+          child: Text(
+            actionLabel,
+            style: TextStyle(color: colorScheme.primary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Simple section header with only title
+class SectionHeader extends StatelessWidget {
+  final String title;
+
+  const SectionHeader({super.key, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      child: Text(
+        title,
+        style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+/// Featured song card with material design styling and improved readability
+class FeaturedSongCard extends StatelessWidget {
+  final Song song;
+
+  const FeaturedSongCard({super.key, required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       width: 160,
       child: Card(
         clipBehavior: Clip.antiAlias,
-        elevation: 0,
+        elevation: 1, // Slight elevation for better depth
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
@@ -350,89 +379,101 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Artist Image
-            song.artists.isNotEmpty && song.artists.first.imageUrl != null
-                ? Image.network(
-                  song.artists.first.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.image_not_supported,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    );
-                  },
-                )
-                : Container(
-                  color: colorScheme.primaryContainer,
-                  child: Icon(
-                    Icons.music_note,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
+            // Artist Placeholder instead of image
+            ArtistPlaceholder(
+              artistName:
+                  song.artists.isNotEmpty ? song.artists.first.name : "Unknown",
+            ),
 
-            // Gradient Overlay
+            // Enhanced Gradient Overlay for better readability
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
+                  stops: const [0.5, 1.0],
                   colors: [
                     Colors.transparent,
-                    colorScheme.inverseSurface.withOpacity(0.7),
+                    Colors.black.withOpacity(0.85), // Darker at bottom
                   ],
                 ),
               ),
             ),
 
-            // Song Info
+            // Song Info with improved contrast
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // Song title with text shadow for better readability
                   Text(
                     song.title,
-                    style: TextStyle(
-                      color: colorScheme.onInverseSurface,
+                    style: const TextStyle(
+                      color:
+                          Colors
+                              .white, // White is more readable on dark backgrounds
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 3.0,
+                          color: Colors.black,
+                          offset: Offset(0.5, 0.5),
+                        ),
+                      ],
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  song.artists.isNotEmpty
-                      ? Text(
-                        song.artists.first.name,
-                        style: TextStyle(
-                          color: colorScheme.onInverseSurface.withOpacity(0.8),
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      )
-                      : const SizedBox.shrink(),
+                  if (song.artists.isNotEmpty)
+                    Text(
+                      song.artists.first.name,
+                      style: const TextStyle(
+                        color: Colors.white, // Consistent white for readability
+                        fontSize: 14,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 2.0,
+                            color: Colors.black,
+                            offset: Offset(0.5, 0.5),
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.remove_red_eye,
-                        size: 14,
-                        color: colorScheme.onInverseSurface.withOpacity(0.6),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        "${song.views ?? 0}",
-                        style: TextStyle(
-                          color: colorScheme.onInverseSurface.withOpacity(0.6),
-                          fontSize: 12,
+                  // Container with slight opacity for view count
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.remove_red_eye,
+                          size: 14,
+                          color: Colors.white70,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Text(
+                          "${song.views ?? 0}",
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -442,30 +483,163 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+}
 
-  // Artist chip with circular image and name using theme's chip style
-  Widget _buildArtistChip(
-    String name,
-    String imageUrl,
-    ColorScheme colorScheme,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: FilterChip(
-        avatar: CircleAvatar(
-          backgroundImage: NetworkImage(imageUrl),
-          backgroundColor: colorScheme.primaryContainer,
+/// Modern artist placeholder with dynamic Material 3 styling
+class ArtistPlaceholder extends StatelessWidget {
+  final String artistName;
+
+  const ArtistPlaceholder({super.key, required this.artistName});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Create a deterministic but varied color based on artist name
+    final int nameHash = artistName.hashCode;
+
+    // Use colors from the Material 3 color scheme for cohesive design
+    final List<Color> primaryColors = [
+      colorScheme.primary,
+      colorScheme.secondary,
+      colorScheme.tertiary,
+    ];
+
+    final List<Color> containerColors = [
+      colorScheme.primaryContainer,
+      colorScheme.secondaryContainer,
+      colorScheme.tertiaryContainer,
+    ];
+
+    // Select colors based on the hash
+    final primaryColor = primaryColors[nameHash % primaryColors.length];
+    final containerColor = containerColors[nameHash % containerColors.length];
+
+    return Container(
+      decoration: BoxDecoration(
+        // Material 3 inspired gradient
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [containerColor, containerColor.withOpacity(0.7)],
         ),
-        label: Text(name),
-        labelStyle: TextStyle(fontWeight: FontWeight.w500),
-        selected: false,
-        onSelected: (bool selected) {},
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Subtle pattern overlay
+          RepaintBoundary(
+            child: CustomPaint(
+              painter: WavePatternPainter(
+                color: primaryColor.withOpacity(0.15),
+                waveCount: 3 + (nameHash % 3),
+              ),
+              size: Size.infinite,
+            ),
+          ),
+
+          // Music icon with modern styling
+          Icon(
+            Icons.music_note_rounded,
+            size: 60,
+            color: primaryColor.withOpacity(0.4),
+          ),
+        ],
       ),
     );
   }
+}
 
-  // Recent lyric item with Material 3 list tile design
-  Widget _buildRecentLyricItem(Song song, ColorScheme colorScheme) {
+/// Custom painter for Material 3 inspired wave pattern
+class WavePatternPainter extends CustomPainter {
+  final Color color;
+  final int waveCount;
+
+  WavePatternPainter({required this.color, this.waveCount = 3});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
+
+    final path = Path();
+
+    // Calculate wave parameters based on size
+    final waveHeight = size.height / (waveCount * 2);
+    final horizontalStep = size.width / 20;
+
+    for (int i = 0; i < waveCount; i++) {
+      final startY =
+          (i * size.height / waveCount) + (size.height / (waveCount * 2));
+
+      path.moveTo(0, startY);
+
+      // Create smooth wave pattern
+      for (double x = 0; x < size.width; x += horizontalStep) {
+        final progress = x / size.width;
+        final waveAmplitude = waveHeight * (1 - (i / waveCount) * 0.5);
+        final y = startY + sin(progress * 2 * pi) * waveAmplitude;
+
+        if (x == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+      }
+
+      canvas.drawPath(path, paint);
+      path.reset();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Artist image with fallback
+class ArtistImage extends StatelessWidget {
+  final String? imageUrl;
+
+  const ArtistImage({super.key, this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (imageUrl != null) {
+      return Image.network(
+        imageUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildFallbackContainer(colorScheme);
+        },
+      );
+    } else {
+      return _buildFallbackContainer(colorScheme);
+    }
+  }
+
+  Widget _buildFallbackContainer(ColorScheme colorScheme) {
+    return Container(
+      color: colorScheme.primaryContainer,
+      child: Icon(Icons.music_note, color: colorScheme.onPrimaryContainer),
+    );
+  }
+}
+
+/// Recent lyric item in a list
+class RecentLyricItem extends StatelessWidget {
+  final Song song;
+
+  const RecentLyricItem({super.key, required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: 0,
@@ -473,34 +647,14 @@ class _MyHomePageState extends State<MyHomePage> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child:
-              song.artists.isNotEmpty && song.artists.first.imageUrl != null
-                  ? Image.network(
-                    song.artists.first.imageUrl!,
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 56,
-                        height: 56,
-                        color: colorScheme.primaryContainer,
-                        child: Icon(
-                          Icons.music_note,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      );
-                    },
-                  )
-                  : Container(
-                    width: 56,
-                    height: 56,
-                    color: colorScheme.primaryContainer,
-                    child: Icon(
-                      Icons.music_note,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child: ArtistImage(
+              imageUrl:
+                  song.artists.isNotEmpty ? song.artists.first.imageUrl : null,
+            ),
+          ),
         ),
         title: Text(
           song.title,
@@ -515,6 +669,53 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         onTap: () {},
       ),
+    );
+  }
+}
+
+/// Bottom navigation bar for the app
+class HomeBottomNavigationBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const HomeBottomNavigationBar({
+    super.key,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return NavigationBar(
+      labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+      backgroundColor: colorScheme.surface,
+      indicatorColor: colorScheme.secondaryContainer,
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onDestinationSelected,
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
+          label: 'Home',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.explore_outlined),
+          selectedIcon: Icon(Icons.explore),
+          label: 'Discover',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.favorite_outline),
+          selectedIcon: Icon(Icons.favorite),
+          label: 'Favorites',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline),
+          selectedIcon: Icon(Icons.person),
+          label: 'Profile',
+        ),
+      ],
     );
   }
 }
