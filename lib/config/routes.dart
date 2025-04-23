@@ -70,16 +70,6 @@ class AppRoutes {
                   return SongDetailsScreen(songId: songId ?? '');
                 },
               ),
-              GoRoute(
-                path: 'search',
-                name: 'search',
-                builder: (context, state) => const SearchScreen(),
-              ),
-              GoRoute(
-                path: 'profile',
-                name: 'profile',
-                builder: (context, state) => const ProfileScreen(),
-              ),
             ],
           ),
           // Lyrics tab
@@ -93,12 +83,6 @@ class AppRoutes {
             path: '/main/favorites',
             name: 'favorites',
             builder: (context, state) => const FavoritesTab(),
-          ),
-          // Settings tab
-          GoRoute(
-            path: '/main/settings',
-            name: 'settings',
-            builder: (context, state) => const SettingsTab(),
           ),
         ],
       ),

@@ -55,9 +55,6 @@ class _MainScreenState extends State<MainScreen> {
             case 2:
               context.go('/main/favorites');
               break;
-            case 3:
-              context.go('/main/settings');
-              break;
           }
         },
       ),
@@ -73,36 +70,12 @@ class FavoritesTab extends StatelessWidget {
   }
 }
 
-class SettingsTab extends StatelessWidget {
-  const SettingsTab({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Settings Tab')));
-  }
-}
-
 class SongDetailsScreen extends StatelessWidget {
   final String songId;
   const SongDetailsScreen({super.key, required this.songId});
   @override
   Widget build(BuildContext context) {
     return Scaffold(body: Center(child: Text('Song Details: $songId')));
-  }
-}
-
-class SearchScreen extends StatelessWidget {
-  const SearchScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Search Screen')));
-  }
-}
-
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Profile Screen')));
   }
 }
 
