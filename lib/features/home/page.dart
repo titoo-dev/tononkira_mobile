@@ -12,6 +12,8 @@ class HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<HomeTab> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _showFloatingSearchButton = false;
 
   // Sample data for demonstration
   final List<Song> _featuredSongs = [
@@ -75,7 +77,53 @@ class _HomeTabState extends State<HomeTab> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Add scroll listener to show/hide floating search button
+    _scrollController.addListener(_onScroll);
+  }
+
+  // Show floating search button when scrolled past app bar
+  void _onScroll() {
+    // Threshold position where search bar is no longer visible
+    const threshold = 150.0;
+
+    if (_scrollController.offset > threshold && !_showFloatingSearchButton) {
+      setState(() {
+        _showFloatingSearchButton = true;
+      });
+    } else if (_scrollController.offset <= threshold &&
+        _showFloatingSearchButton) {
+      setState(() {
+        _showFloatingSearchButton = false;
+      });
+    }
+  }
+
+  // Open search functionality
+  void _openSearch() {
+    // Scroll back to top to show search bar
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+
+    // Focus the search field
+    FocusScope.of(context).requestFocus(FocusNode());
+
+    Future.delayed(const Duration(milliseconds: 100), () {
+      FocusScope.of(context).requestFocus(FocusNode());
+      _searchController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _searchController.text.length),
+      );
+    });
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -86,8 +134,14 @@ class _HomeTabState extends State<HomeTab> {
 
     return Scaffold(
       backgroundColor: colorScheme.background,
+      // Floating search button that appears when scrolled down
+      floatingActionButton:
+          _showFloatingSearchButton
+              ? FloatingSearchButton(onPressed: _openSearch)
+              : null,
       body: SafeArea(
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             // App Bar with Search
             SliverToBoxAdapter(
@@ -120,6 +174,38 @@ class _HomeTabState extends State<HomeTab> {
             // Bottom Padding
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating search button with animation
+class FloatingSearchButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const FloatingSearchButton({super.key, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 300),
+      offset: const Offset(0, 0),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: 1.0,
+        child: FloatingActionButton(
+          elevation: 4,
+          backgroundColor: colorScheme.primaryContainer,
+          foregroundColor: colorScheme.onPrimaryContainer,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.search),
+          onPressed: onPressed,
+          tooltip: 'Search lyrics',
         ),
       ),
     );
