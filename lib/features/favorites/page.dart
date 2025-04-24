@@ -447,7 +447,7 @@ class _FavoritesTabState extends State<FavoritesTab>
             width: 150,
             height: 150,
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
               borderRadius: BorderRadius.circular(75),
             ),
             child: Stack(
@@ -570,8 +570,8 @@ class SearchBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         color:
             Theme.of(context).brightness == Brightness.light
-                ? colorScheme.surfaceVariant.withOpacity(0.7)
-                : colorScheme.surfaceVariant,
+                ? colorScheme.surfaceContainerHighest.withOpacity(0.7)
+                : colorScheme.surfaceContainerHighest,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(

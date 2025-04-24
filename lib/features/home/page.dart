@@ -133,7 +133,7 @@ class _HomeTabState extends State<HomeTab> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       // Floating search button that appears when scrolled down
       floatingActionButton:
           _showFloatingSearchButton
@@ -203,9 +203,9 @@ class FloatingSearchButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Icon(Icons.search),
           onPressed: onPressed,
           tooltip: 'Search lyrics',
+          child: const Icon(Icons.search),
         ),
       ),
     );
@@ -527,7 +527,7 @@ class SearchBar extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-          color: colorScheme.surfaceVariant.withOpacity(0.5),
+          color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Row(

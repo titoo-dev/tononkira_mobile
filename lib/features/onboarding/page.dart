@@ -253,7 +253,7 @@ class OnboardingPageContent extends StatelessWidget {
               text: TextSpan(
                 style: textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: colorScheme.onBackground,
+                  color: colorScheme.onSurface,
                 ),
                 children: _getStyledTitle(item.title, colorScheme),
               ),

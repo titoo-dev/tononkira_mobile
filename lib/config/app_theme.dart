@@ -36,7 +36,7 @@ class AppTheme {
       // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: _lightColorScheme.surfaceVariant.withOpacity(0.5),
+        fillColor: _lightColorScheme.surfaceContainerHighest.withOpacity(0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
           borderSide: BorderSide(color: _lightColorScheme.outline),
@@ -88,7 +88,7 @@ class AppTheme {
 
       // Chip theme
       chipTheme: ChipThemeData(
-        backgroundColor: _lightColorScheme.surfaceVariant,
+        backgroundColor: _lightColorScheme.surfaceContainerHighest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
 
@@ -113,7 +113,7 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: _lightColorScheme.surface,
         indicatorColor: _lightColorScheme.secondaryContainer,
-        labelTextStyle: MaterialStateProperty.all(
+        labelTextStyle: WidgetStateProperty.all(
           TextStyle(
             fontFamily: GoogleFonts.inter().fontFamily,
             fontWeight: FontWeight.w500,
@@ -148,17 +148,14 @@ class AppTheme {
     secondary: _convertFromOklch(0.6157, 0.2, 41.51), // --secondary
     onSecondary: Colors.white, // --secondary-foreground
     tertiary: _convertFromOklch(0.7216, 0.12, 60), // --accent
-    onTertiary: _convertFromOklch(0.1529, 0.08, 61.2), // --accent-foreground
-    // Background colors
-    background: Colors.white, // --background
-    onBackground: Colors.black, // --foreground
+    onTertiary: _convertFromOklch(0.1529, 0.08, 61.2), // --foreground
     surface: Colors.white, // --card
     onSurface: Colors.black, // --card-foreground
     // Supporting colors
     error: _convertFromOklch(0.4647, 0.19, 3.2), // --destructive
     onError: Colors.white, // --destructive-foreground
     // Additional material colors derived from the theme
-    surfaceVariant: _convertFromOklch(0.9686, 0.01, 210), // --muted
+    surfaceContainerHighest: _convertFromOklch(0.9686, 0.01, 210), // --muted
     onSurfaceVariant: _convertFromOklch(0.2, 0.02, 210), // --muted-foreground
     outline: _convertFromOklch(0.93, 0.01, 40), // --border
     outlineVariant: _convertFromOklch(0.93, 0.01, 40).withOpacity(0.5),
