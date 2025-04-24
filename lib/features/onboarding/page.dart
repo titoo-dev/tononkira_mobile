@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:tononkira_mobile/config/routes.dart';
+import 'package:tononkira_mobile/data/database_helper.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -79,14 +81,42 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         curve: Curves.easeInOut,
       );
     } else {
-      _navigateToHome();
+      _checkDatabaseAndNavigate();
+    }
+  }
+
+  // Check database before navigating to home
+  Future<void> _checkDatabaseAndNavigate() async {
+    try {
+      // Check if database exists and has data
+      final db = await DatabaseHelper.instance.database;
+      final artistCount = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM Artist'),
+      );
+      final songCount = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM Song'),
+      );
+
+      if (mounted) {
+        // If database is empty or not properly set up, go to sync page
+        if (artistCount == 0 || songCount == 0) {
+          GoRouter.of(context).go(AppRoutes.databaseSync);
+        } else {
+          // Database exists and has data, go to home
+          GoRouter.of(context).go(AppRoutes.home);
+        }
+      }
+    } catch (e) {
+      // If there's an error (like tables don't exist), go to sync page
+      if (mounted) {
+        GoRouter.of(context).go(AppRoutes.databaseSync);
+      }
     }
   }
 
   void _navigateToHome() {
-    // Navigate to home page using GoRouter
-    // This replaces the current page with the main home screen
-    GoRouter.of(context).go(AppRoutes.home);
+    // Check database before navigating
+    _checkDatabaseAndNavigate();
   }
 
   @override

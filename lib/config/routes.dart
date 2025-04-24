@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tononkira_mobile/features/db_sync/page.dart';
 import 'package:tononkira_mobile/features/favorites/page.dart';
 import 'package:tononkira_mobile/features/home/lyric_details/page.dart';
 import 'package:tononkira_mobile/features/home/page.dart';
@@ -16,6 +17,9 @@ class AppRoutes {
   // Route names as constants for easy reference and maintenance
   /// Onboarding route
   static const String onboarding = '/onboarding';
+
+  /// Database sync route
+  static const String databaseSync = '/database-sync';
 
   /// Main route containing bottom navigation
   static const String main = '/main';
@@ -53,6 +57,13 @@ class AppRoutes {
         path: '/onboarding',
         name: 'onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+
+      // Database sync route (shown during initial setup)
+      GoRoute(
+        path: '/database-sync',
+        name: 'databaseSync',
+        builder: (context, state) => const DatabaseSyncPage(),
       ),
 
       // Main screen with bottom navigation
@@ -116,7 +127,7 @@ class AppRoutes {
 
       // Redirect to main screen if trying to access root
       if (state.path == '/') {
-        return '/main/home';
+        return '/onboarding';
       }
 
       return null;
