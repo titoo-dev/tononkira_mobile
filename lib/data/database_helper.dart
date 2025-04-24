@@ -1,14 +1,23 @@
 // filepath: lib/data/database_helper.dart
 import 'dart:async';
+import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'dart:developer' as dev;
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+
+  static const kDbFileName = 'tononkira.db';
+  static const kDbSongTableName = 'Song';
+  static const kDbLyricTableName = 'Lyric';
+  static const kDbArtistTableName = 'Artist';
+  static const kDbArtistToSongTableName = '_ArtistToSong';
 
   // Progress tracking variables
   double _importProgress = 0.0;
@@ -49,22 +58,42 @@ class DatabaseHelper {
   Future<Database> get database async {
     if (_database != null) return _database!;
     dev.log('Database not initialized, initializing now');
-    _database = await _initDB('tononkira.db');
+    _database = await _initDB(kDbFileName);
     dev.log('Database initialized successfully');
     return _database!;
   }
 
   Future<Database> _initDB(String filePath) async {
     dev.log('Initializing database: $filePath');
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-    dev.log('Database path: $path');
+    final dbFolder = await getDatabasesPath();
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    if (!await Directory(dbFolder).exists()) {
+      dev.log('Creating database folder: $dbFolder');
+      await Directory(dbFolder).create(recursive: true);
+    }
+
+    final dbPath = join(dbFolder, filePath);
+    dev.log('Database path: $dbPath');
+
+    return await openDatabase(dbPath, version: 1, onCreate: _createDB);
   }
 
   Future _createDB(Database db, int version) async {
     dev.log('Creating database tables (version: $version)');
+
+    // Create Artist table with SQLite compatible syntax
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS "Artist" (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        bio TEXT,
+        url TEXT,
+        slug TEXT NOT NULL,
+        "imageUrl" TEXT,
+        "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TEXT NOT NULL
+      )
+    ''');
 
     // Create Lyric table with SQLite compatible syntax
     await db.execute('''
@@ -81,20 +110,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Create Artist table with SQLite compatible syntax
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS "Artist" (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        bio TEXT,
-        url TEXT,
-        slug TEXT NOT NULL,
-        "imageUrl" TEXT,
-        "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TEXT NOT NULL
-      )
-    ''');
-
     // Create index on Artist name
     await db.execute('''
       CREATE INDEX IF NOT EXISTS "Artist_name_idx" ON "Artist" (name)
@@ -105,11 +120,10 @@ class DatabaseHelper {
       CREATE TABLE IF NOT EXISTS "Song" (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
-        duration INTEGER,
         slug TEXT NOT NULL,
         "trackNumber" INTEGER,
         views INTEGER DEFAULT 0,
-        "lyricId" INTEGER UNIQUE,
+        "lyricId" INTEGER,
         "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TEXT NOT NULL,
         FOREIGN KEY ("lyricId") REFERENCES "Lyric"(id) ON UPDATE CASCADE ON DELETE SET NULL
@@ -121,7 +135,6 @@ class DatabaseHelper {
       CREATE TABLE favorites (
         id INTEGER PRIMARY KEY,
         title TEXT NOT NULL
-        -- add more fields as needed
       )
     ''');
 
@@ -160,9 +173,9 @@ class DatabaseHelper {
     return results;
   }
 
-  // Import data from CSV files in assets folder with progress tracking
-  Future<void> importDataFromCSV(String assetsPath) async {
-    dev.log('Starting data import from CSV files');
+  // Import data from SQL script files in assets folder with progress tracking
+  Future<void> importDataFromSQL(String assetsPath) async {
+    dev.log('Starting data import from SQL script files');
 
     if (_isImporting) {
       dev.log('Import already in progress');
@@ -177,24 +190,39 @@ class DatabaseHelper {
     // Start a transaction for better performance and atomicity
     await db.transaction((txn) async {
       try {
-        // Import Lyric data - 25% of total progress
-        _updateProgress(0.0, "Importing lyrics");
-        await _importLyricData(txn, '$assetsPath/Lyric.csv');
-        _updateProgress(0.25, "Lyrics imported successfully");
-
         // Import Artist data - 25% of total progress
-        _updateProgress(0.25, "Importing artists");
-        await _importArtistData(txn, '$assetsPath/Artist.csv');
-        _updateProgress(0.5, "Artists imported successfully");
+        _updateProgress(0.0, "Importing artists");
+        await _importDataFromSQLScript(
+          txn,
+          '$assetsPath/Artist.sql',
+          0.0,
+          0.25,
+        );
+        _updateProgress(0.25, "Artists imported successfully");
+
+        // Import Lyric data - 25% of total progress
+        _updateProgress(0.25, "Importing lyrics");
+        await _importDataFromSQLScript(
+          txn,
+          '$assetsPath/Lyric.sql',
+          0.25,
+          0.25,
+        );
+        _updateProgress(0.5, "Lyrics imported successfully");
 
         // Import Song data - 25% of total progress
         _updateProgress(0.5, "Importing songs");
-        await _importSongData(txn, '$assetsPath/Song.csv');
+        await _importDataFromSQLScript(txn, '$assetsPath/Song.sql', 0.5, 0.25);
         _updateProgress(0.75, "Songs imported successfully");
 
         // Import ArtistToSong relations - 25% of total progress
         _updateProgress(0.75, "Importing artist-song relationships");
-        await _importArtistToSongData(txn, '$assetsPath/_ArtistToSong.csv');
+        await _importDataFromSQLScript(
+          txn,
+          '$assetsPath/_ArtistToSong.sql',
+          0.75,
+          0.25,
+        );
         _updateProgress(1.0, "Data import completed successfully");
 
         dev.log('Data import completed successfully');
@@ -208,190 +236,59 @@ class DatabaseHelper {
     });
   }
 
-  Future<void> _importLyricData(Transaction txn, String filePath) async {
-    dev.log('Importing Lyric data from $filePath');
+  Future<void> _importDataFromSQLScript(
+    Transaction txn,
+    String filePath,
+    double progressStart,
+    double progressSegment,
+  ) async {
+    dev.log('Importing data from SQL script: $filePath');
 
-    // In a real implementation, you'd read the file from assets
-    // For example:
-    // final String csvString = await rootBundle.loadString(filePath);
-    // final List<List<dynamic>> csvTable = const CsvToListConverter().convert(csvString);
+    try {
+      // Load the SQL script file from assets
+      final String sqlScript = await rootBundle.loadString(filePath);
 
-    // Mock implementation for demonstration
-    final String csvString = ''; // Load CSV content
-    final List<String> lines = csvString.split('\n');
+      // Remove comments and trim whitespace
+      final cleanedScript = sqlScript.replaceAll(RegExp(r'--.*'), '').trim();
 
-    // Skip header if present
-    int count = 0;
-    int total = lines.length > 1 ? lines.length - 1 : 0;
+      // Split the script into statements by semicolon, but keep multi-row inserts together
+      // This will work for most simple SQL scripts
+      final List<String> statements =
+          cleanedScript
+              .split(';')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
 
-    for (int i = 1; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isEmpty) continue;
+      final int total = statements.length;
+      int count = 0;
 
-      // Parse CSV row - this is simplified, you should use a proper CSV parser
-      final fields = line.split(',');
-      if (fields.length >= 8) {
+      dev.log('Found $total SQL statements to execute');
+
+      for (final stmt in statements) {
         try {
-          await txn.insert('Lyric', {
-            'id': int.parse(fields[0]),
-            'content': fields[1],
-            'contentText': fields[2].isEmpty ? null : fields[2],
-            'url': fields[3],
-            'language': fields[4],
-            'createdBy': fields[5],
-            'isSynced': int.parse(fields[6]),
-            'createdAt': fields[7],
-            'updatedAt': fields[8],
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
+          await txn.execute('$stmt;');
           count++;
 
-          // Update sub-progress for lyrics import (ranges from 0.0 to 0.25 of the total)
-          if (total > 0 && count % 10 == 0) {
+          // Update progress periodically
+          if (count % 2 == 0 || count == total) {
             double subProgress = count / total;
             _updateProgress(
-              0.0 + (subProgress * 0.25),
-              "Importing lyrics: $count/$total",
+              progressStart + (subProgress * progressSegment),
+              "Executing SQL statements: $count/$total",
             );
           }
         } catch (e) {
-          dev.log('Error parsing Lyric row: $e');
+          dev.log('Error executing SQL statement: $e');
+          dev.log('Problematic statement: $stmt');
+          // Continue with the next statement instead of failing the entire import
         }
       }
+
+      dev.log('Executed $count SQL statements successfully');
+    } catch (e) {
+      dev.log('Error loading or parsing SQL script: $e');
+      rethrow;
     }
-
-    dev.log('Imported $count Lyric records');
-  }
-
-  Future<void> _importArtistData(Transaction txn, String filePath) async {
-    dev.log('Importing Artist data from $filePath');
-
-    // Similar implementation as _importLyricData but for Artist table
-    final String csvString = ''; // Load CSV content
-    final List<String> lines = csvString.split('\n');
-
-    int count = 0;
-    int total = lines.length > 1 ? lines.length - 1 : 0;
-
-    for (int i = 1; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isEmpty) continue;
-
-      final fields = line.split(',');
-      if (fields.length >= 7) {
-        try {
-          await txn.insert('Artist', {
-            'id': int.parse(fields[0]),
-            'name': fields[1],
-            'bio': fields[2].isEmpty ? null : fields[2],
-            'url': fields[3],
-            'slug': fields[4],
-            'imageUrl': fields[5].isEmpty ? null : fields[5],
-            'createdAt': fields[6],
-            'updatedAt': fields[7],
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
-          count++;
-
-          // Update sub-progress for artists import (ranges from 0.25 to 0.5 of the total)
-          if (total > 0 && count % 10 == 0) {
-            double subProgress = count / total;
-            _updateProgress(
-              0.25 + (subProgress * 0.25),
-              "Importing artists: $count/$total",
-            );
-          }
-        } catch (e) {
-          dev.log('Error parsing Artist row: $e');
-        }
-      }
-    }
-
-    dev.log('Imported $count Artist records');
-  }
-
-  Future<void> _importSongData(Transaction txn, String filePath) async {
-    dev.log('Importing Song data from $filePath');
-
-    // Similar implementation as above but for Song table
-    final String csvString = ''; // Load CSV content
-    final List<String> lines = csvString.split('\n');
-
-    int count = 0;
-    int total = lines.length > 1 ? lines.length - 1 : 0;
-
-    for (int i = 1; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isEmpty) continue;
-
-      final fields = line.split(',');
-      if (fields.length >= 8) {
-        try {
-          await txn.insert('Song', {
-            'id': int.parse(fields[0]),
-            'title': fields[1],
-            'duration': fields[2].isEmpty ? null : int.parse(fields[2]),
-            'slug': fields[3],
-            'trackNumber': fields[4].isEmpty ? null : int.parse(fields[4]),
-            'views': int.parse(fields[5]),
-            'lyricId': int.parse(fields[6]),
-            'createdAt': fields[7],
-            'updatedAt': fields[8],
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
-          count++;
-
-          // Update sub-progress for songs import (ranges from 0.5 to 0.75 of the total)
-          if (total > 0 && count % 10 == 0) {
-            double subProgress = count / total;
-            _updateProgress(
-              0.5 + (subProgress * 0.25),
-              "Importing songs: $count/$total",
-            );
-          }
-        } catch (e) {
-          dev.log('Error parsing Song row: $e');
-        }
-      }
-    }
-
-    dev.log('Imported $count Song records');
-  }
-
-  Future<void> _importArtistToSongData(Transaction txn, String filePath) async {
-    dev.log('Importing ArtistToSong relations from $filePath');
-
-    // Similar implementation for the junction table
-    final String csvString = ''; // Load CSV content
-    final List<String> lines = csvString.split('\n');
-
-    int count = 0;
-    int total = lines.length;
-
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isEmpty) continue;
-
-      final fields = line.split(',');
-      if (fields.length >= 2) {
-        try {
-          await txn.insert('_ArtistToSong', {
-            'A': int.parse(fields[0]),
-            'B': int.parse(fields[1]),
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
-          count++;
-
-          // Update sub-progress for relations import (ranges from 0.75 to 1.0 of the total)
-          if (total > 0 && count % 10 == 0) {
-            double subProgress = count / total;
-            _updateProgress(
-              0.75 + (subProgress * 0.25),
-              "Importing artist-song relations: $count/$total",
-            );
-          }
-        } catch (e) {
-          dev.log('Error parsing ArtistToSong relation: $e');
-        }
-      }
-    }
-
-    dev.log('Imported $count ArtistToSong relations');
   }
 }

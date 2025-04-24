@@ -50,9 +50,15 @@ class AppRoutes {
 
   /// GoRouter configuration for the application
   static final router = GoRouter(
-    initialLocation: '/onboarding',
+    initialLocation: databaseSync,
     routes: [
       // Onboarding route (shown only first time)
+      GoRoute(
+        path: '/database-sync',
+        name: 'databaseSync',
+        builder: (context, state) => const DatabaseSyncPage(),
+      ),
+
       GoRoute(
         path: '/onboarding',
         name: 'onboarding',
@@ -60,11 +66,6 @@ class AppRoutes {
       ),
 
       // Database sync route (shown during initial setup)
-      GoRoute(
-        path: '/database-sync',
-        name: 'databaseSync',
-        builder: (context, state) => const DatabaseSyncPage(),
-      ),
 
       // Main screen with bottom navigation
       ShellRoute(
@@ -119,7 +120,7 @@ class AppRoutes {
     // Log routing for debugging purposes
     debugLogDiagnostics: true,
     // Redirect to onboarding on first launch, then to main screen
-    redirect: (BuildContext context, GoRouterState state) {
+    redirect: (BuildContext context, GoRouterState state) async {
       // You can add logic here to check if this is first launch
       // Example:
       // final firstLaunch = PreferencesService.isFirstLaunch();
@@ -127,7 +128,7 @@ class AppRoutes {
 
       // Redirect to main screen if trying to access root
       if (state.path == '/') {
-        return '/onboarding';
+        return databaseSync;
       }
 
       return null;

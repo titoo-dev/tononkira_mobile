@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:tononkira_mobile/data/database_helper.dart';
 import 'package:tononkira_mobile/models/models.dart';
 
 class HomeTab extends StatefulWidget {
@@ -15,79 +16,87 @@ class _HomeTabState extends State<HomeTab> {
   final ScrollController _scrollController = ScrollController();
   bool _showFloatingSearchButton = false;
 
-  // Sample data for demonstration
-  final List<Song> _featuredSongs = [
-    Song(
-      id: 1,
-      title: "Veloma",
-      slug: "veloma",
-      views: 1245,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      artists: [
-        Artist(
-          id: 1,
-          name: "Mahaleo",
-          slug: "mahaleo",
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          imageUrl:
-              'https://www.nocomment.mg/storage/app/public/articles/NC163/cultures/CHpuKxfe3d9c40b974a81858a8fe1ee1a3a9e1.webp',
-        ),
-      ],
-    ),
-    Song(
-      id: 2,
-      title: "Tsara ny tanantsika",
-      slug: "tsara-ny-tanantsika",
-      views: 982,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      artists: [
-        Artist(
-          id: 2,
-          name: "Ambondrona",
-          slug: "ambondrona",
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          imageUrl:
-              'https://yt3.googleusercontent.com/ktckEASBqHYs--hLsycAhxTz-7ihykMxDvMN-CnJygTgVSUf-mNZUpSUhzqilkS02Wcavl-C=s900-c-k-c0x00ffffff-no-rj',
-        ),
-      ],
-    ),
-    Song(
-      id: 3,
-      title: "Mozika malaza",
-      slug: "mozika-malaza",
-      views: 784,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      artists: [
-        Artist(
-          id: 3,
-          name: "Ny Ainga",
-          slug: "ny-ainga",
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          imageUrl:
-              'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpPM-JypQLj_0iGGMkAAToFmKgEwFZH_9Yy75fDdyVlaZs5eZVDFoG6S3IpF8TCWrBrdY&usqp=CAU',
-        ),
-      ],
-    ),
-  ];
+  late Future<Map<String, List<Song>>> _dataFuture;
 
   @override
   void initState() {
     super.initState();
-    // Add scroll listener to show/hide floating search button
     _scrollController.addListener(_onScroll);
+    _dataFuture = _loadData();
   }
 
-  // Show floating search button when scrolled past app bar
-  void _onScroll() {
-    // Threshold position where search bar is no longer visible
-    const threshold = 150.0;
+  Future<Map<String, List<Song>>> _loadData() async {
+    final db = await DatabaseHelper.instance.database;
 
+    // Load songs with artists (featured songs - limit to 5)
+    final featuredSongsData = await db.rawQuery('''
+      SELECT s.id, s.title, s.slug, s.views, s.createdAt, s.updatedAt 
+      FROM Song s 
+      ORDER BY s.views DESC LIMIT 5
+    ''');
+
+    // Load recent songs (limit to 10)
+    final recentSongsData = await db.rawQuery('''
+      SELECT s.id, s.title, s.slug, s.views, s.createdAt, s.updatedAt 
+      FROM Song s 
+      ORDER BY s.createdAt DESC LIMIT 10
+    ''');
+
+    final featuredSongs = await _transformSongsData(featuredSongsData);
+    final recentSongs = await _transformSongsData(recentSongsData);
+
+    return {'featured': featuredSongs, 'recent': recentSongs};
+  }
+
+  Future<List<Song>> _transformSongsData(
+    List<Map<String, dynamic>> songsData,
+  ) async {
+    final result = <Song>[];
+    final db = await DatabaseHelper.instance.database;
+
+    for (final songData in songsData) {
+      final artistsData = await db.rawQuery(
+        '''
+        SELECT a.id, a.name, a.slug, a.imageUrl, a.createdAt, a.updatedAt
+        FROM Artist a
+        JOIN _ArtistToSong ats ON ats.A = a.id
+        WHERE ats.B = ?
+      ''',
+        [songData['id']],
+      );
+
+      final artists =
+          artistsData
+              .map(
+                (artistData) => Artist(
+                  id: artistData['id'] as int,
+                  name: artistData['name'] as String,
+                  slug: artistData['slug'] as String,
+                  imageUrl: artistData['imageUrl'] as String?,
+                  createdAt: DateTime.parse(artistData['createdAt'] as String),
+                  updatedAt: DateTime.parse(artistData['updatedAt'] as String),
+                ),
+              )
+              .toList();
+
+      result.add(
+        Song(
+          id: songData['id'] as int,
+          title: songData['title'] as String,
+          slug: songData['slug'] as String,
+          views: songData['views'] as int? ?? 0,
+          createdAt: DateTime.parse(songData['createdAt'] as String),
+          updatedAt: DateTime.parse(songData['updatedAt'] as String),
+          artists: artists,
+        ),
+      );
+    }
+
+    return result;
+  }
+
+  void _onScroll() {
+    const threshold = 150.0;
     if (_scrollController.offset > threshold && !_showFloatingSearchButton) {
       setState(() {
         _showFloatingSearchButton = true;
@@ -100,20 +109,17 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
-  // Open search functionality
   void _openSearch() {
-    // Scroll back to top to show search bar
     _scrollController.animateTo(
       0,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
-
-    // Focus the search field
     FocusScope.of(context).requestFocus(FocusNode());
-
     Future.delayed(const Duration(milliseconds: 100), () {
-      FocusScope.of(context).requestFocus(FocusNode());
+      if (mounted) {
+        FocusScope.of(context).requestFocus(FocusNode());
+      }
       _searchController.selection = TextSelection.fromPosition(
         TextPosition(offset: _searchController.text.length),
       );
@@ -134,46 +140,86 @@ class _HomeTabState extends State<HomeTab> {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      // Floating search button that appears when scrolled down
       floatingActionButton:
           _showFloatingSearchButton
               ? FloatingSearchButton(onPressed: _openSearch)
               : null,
       body: SafeArea(
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // App Bar with Search
-            SliverToBoxAdapter(
-              child: HomeAppBar(
-                title: 'Tononkira',
-                searchController: _searchController,
+        child: FutureBuilder<Map<String, List<Song>>>(
+          future: _dataFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text(
+                    'Failed to load data. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ),
+              );
+            }
+
+            final featuredSongs = snapshot.data?['featured'] ?? [];
+            final recentSongs = snapshot.data?['recent'] ?? [];
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                setState(() {
+                  _dataFuture = _loadData();
+                });
+                await _dataFuture;
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: HomeAppBar(
+                      title: 'Tononkira',
+                      searchController: _searchController,
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child:
+                        featuredSongs.isEmpty
+                            ? const SizedBox(height: 16)
+                            : FeaturedSection(featuredSongs: featuredSongs),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                  SliverToBoxAdapter(
+                    child: SectionHeader(title: "Recent Lyrics"),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                  recentSongs.isEmpty
+                      ? SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Text(
+                              'No lyrics found. Try importing data first.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                      : SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final song = recentSongs[index];
+                          return RecentLyricItem(song: song);
+                        }, childCount: recentSongs.length),
+                      ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                ],
               ),
-            ),
-
-            // Featured Section
-            SliverToBoxAdapter(
-              child: FeaturedSection(featuredSongs: _featuredSongs),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-            // Recent Lyrics Section Header
-            SliverToBoxAdapter(child: SectionHeader(title: "Recent Lyrics")),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-            // Recent Lyrics List
-            SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final song = _featuredSongs[index % _featuredSongs.length];
-                return RecentLyricItem(song: song);
-              }, childCount: 10),
-            ),
-
-            // Bottom Padding
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -527,7 +573,7 @@ class SearchBar extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-          color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: colorScheme.surfaceVariant.withOpacity(0.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Row(
@@ -679,11 +725,15 @@ class FeaturedSongCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Artist Placeholder instead of image
-            ArtistPlaceholder(
-              artistName:
-                  song.artists.isNotEmpty ? song.artists.first.name : "Unknown",
-            ),
+            // Artist Image or Placeholder
+            song.artists.isNotEmpty && song.artists.first.imageUrl != null
+                ? ArtistImage(imageUrl: song.artists.first.imageUrl)
+                : ArtistPlaceholder(
+                  artistName:
+                      song.artists.isNotEmpty
+                          ? song.artists.first.name
+                          : "Unknown",
+                ),
 
             // Enhanced Gradient Overlay for better readability
             Container(
@@ -711,9 +761,7 @@ class FeaturedSongCard extends StatelessWidget {
                   Text(
                     song.title,
                     style: const TextStyle(
-                      color:
-                          Colors
-                              .white, // White is more readable on dark backgrounds
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       shadows: [
@@ -732,7 +780,7 @@ class FeaturedSongCard extends StatelessWidget {
                     Text(
                       song.artists.first.name,
                       style: const TextStyle(
-                        color: Colors.white, // Consistent white for readability
+                        color: Colors.white,
                         fontSize: 14,
                         shadows: [
                           Shadow(
@@ -916,6 +964,10 @@ class ArtistImage extends StatelessWidget {
         errorBuilder: (context, error, stackTrace) {
           return _buildFallbackContainer(colorScheme);
         },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildFallbackContainer(colorScheme);
+        },
       );
     } else {
       return _buildFallbackContainer(colorScheme);
@@ -941,19 +993,28 @@ class RecentLyricItem extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colorScheme.outline.withOpacity(0.1)),
+      ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: SizedBox(
             width: 56,
             height: 56,
-            child: ArtistImage(
-              imageUrl:
-                  song.artists.isNotEmpty ? song.artists.first.imageUrl : null,
-            ),
+            child:
+                song.artists.isNotEmpty && song.artists.first.imageUrl != null
+                    ? ArtistImage(imageUrl: song.artists.first.imageUrl)
+                    : ArtistPlaceholder(
+                      artistName:
+                          song.artists.isNotEmpty
+                              ? song.artists.first.name
+                              : "Unknown",
+                    ),
           ),
         ),
         title: Text(

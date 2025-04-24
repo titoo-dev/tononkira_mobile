@@ -1,5 +1,8 @@
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:tononkira_mobile/config/routes.dart';
 import 'package:tononkira_mobile/data/database_helper.dart';
 import 'dart:async';
 
@@ -10,11 +13,9 @@ class DatabaseSyncPage extends StatefulWidget {
   State<DatabaseSyncPage> createState() => _DatabaseSyncPageState();
 }
 
-class _DatabaseSyncPageState extends State<DatabaseSyncPage>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _DatabaseSyncPageState extends State<DatabaseSyncPage> {
   double _progress = 0.0;
-  String _status = 'Preparing...';
+  String _status = 'Setting up your library';
   bool _isComplete = false;
   bool _hasError = false;
   String _errorMessage = '';
@@ -23,17 +24,48 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
+    _checkDatabase().then((value) {
+      if (value) {
+        // If database is already set up, navigate to onboarding
+        if (mounted) {
+          context.go(AppRoutes.onboarding);
+        }
+      } else {
+        // Start the database sync process
+        _startDatabaseSync();
+      }
+    });
+  }
 
-    _startDatabaseSync();
+  Future<bool> _checkDatabase() async {
+    try {
+      // Check if database exists and has data
+      final db = await DatabaseHelper.instance.database;
+      final artistCount = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM Artist'),
+      );
+      final songCount = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM Song'),
+      );
+
+      // If database is empty or not properly set up, go to sync page
+      if (!(artistCount == 0 || songCount == 0)) {
+        if (mounted) {
+          context.go(AppRoutes.onboarding);
+        }
+        return true;
+      }
+      // If database is empty, proceed with sync
+      return false;
+    } catch (e) {
+      // If there's an error (like tables don't exist), go to sync page
+      dev.log('Database check error: $e');
+      return false;
+    }
   }
 
   Future<void> _startDatabaseSync() async {
     try {
-      // Subscribe to progress updates
       _progressSubscription = DatabaseHelper.instance.progressStream.listen((
         update,
       ) {
@@ -42,14 +74,12 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage>
           _status = update['status'];
         });
 
-        // When complete, prepare to navigate to home
         if (_progress >= 1.0) {
           _completeSync();
         }
       });
 
-      // Start the database import
-      await DatabaseHelper.instance.importDataFromCSV('assets/data');
+      await DatabaseHelper.instance.importDataFromSQL('assets/sql');
     } catch (e) {
       setState(() {
         _hasError = true;
@@ -63,10 +93,9 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage>
       _isComplete = true;
     });
 
-    // Wait a moment to show the completion animation before navigating
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        context.go('/main/home');
+        context.go(AppRoutes.onboarding);
       }
     });
   }
@@ -74,7 +103,7 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage>
   void _retrySync() {
     setState(() {
       _progress = 0.0;
-      _status = 'Preparing...';
+      _status = 'Setting up your library';
       _isComplete = false;
       _hasError = false;
       _errorMessage = '';
@@ -85,7 +114,6 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage>
 
   @override
   void dispose() {
-    _controller.dispose();
     _progressSubscription.cancel();
     super.dispose();
   }
@@ -97,55 +125,59 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage>
 
     return Scaffold(
       backgroundColor: colorScheme.background,
-      body: SafeArea(
+      body: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 60),
-              // App logo or icon
-              _buildAppLogo(colorScheme),
-              const SizedBox(height: 40),
-              // Title and subtitle
-              Text(
-                'Setting Up Your Experience',
-                style: textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              // App logo
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
+                child: Icon(
+                  Icons.music_note,
+                  size: 50,
+                  color: colorScheme.onPrimaryContainer,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 40),
+
+              // Title
               Text(
-                'We\'re preparing the song database to provide you with the best experience',
+                'Setting Up Tononkira',
+                style: textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onBackground,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Status text
+              Text(
+                _status,
                 style: textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const Spacer(),
-              // Sync status and progress
-              _buildSyncStatus(colorScheme, textTheme),
-              const SizedBox(height: 20),
-              // Progress bar
-              _buildProgressIndicator(colorScheme),
-              const SizedBox(height: 30),
-              // Error message or success message
+              const SizedBox(height: 60),
+
+              // Error or Progress UI
               _hasError
-                  ? _buildErrorView(colorScheme, textTheme)
-                  : _isComplete
-                  ? _buildSuccessView(colorScheme, textTheme)
-                  : const SizedBox(height: 60),
-              const Spacer(),
-              // Footer or additional info
-              Text(
-                'Tononkira - Your Malagasy Song Lyrics App',
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.7),
-                ),
-              ),
-              const SizedBox(height: 20),
+                  ? _buildErrorWidget(colorScheme)
+                  : _buildProgressWidget(colorScheme),
             ],
           ),
         ),
@@ -153,209 +185,92 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage>
     );
   }
 
-  Widget _buildAppLogo(ColorScheme colorScheme) {
-    return Container(
-      width: 120,
-      height: 120,
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.music_note,
-          size: 60,
-          color: colorScheme.onPrimaryContainer,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSyncStatus(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildProgressWidget(ColorScheme colorScheme) {
     return Column(
       children: [
+        // Progress percentage
         Text(
-          _status,
-          style: textTheme.titleMedium?.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${(_progress * 100).toStringAsFixed(0)}%',
-          style: textTheme.headlineMedium?.copyWith(
-            color: colorScheme.primary,
+          '${(_progress * 100).toInt()}%',
+          style: TextStyle(
+            fontSize: 36,
             fontWeight: FontWeight.bold,
+            color: colorScheme.primary,
           ),
         ),
+        const SizedBox(height: 20),
+
+        // Success animation when complete
+        if (_isComplete)
+          Column(
+            children: [
+              const SizedBox(height: 40),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check,
+                  size: 40,
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Ready to go!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }
 
-  Widget _buildProgressIndicator(ColorScheme colorScheme) {
-    return Column(
-      children: [
-        // Animated progress indicator
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 8,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                // Background
-                Container(
-                  width: double.infinity,
-                  color: colorScheme.surfaceVariant,
-                ),
-                // Progress fill
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeInOut,
-                  width: MediaQuery.of(context).size.width * _progress,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [colorScheme.primary, colorScheme.tertiary],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Sync step indicators
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildStepIndicator('Lyrics', _progress >= 0.25, colorScheme),
-            _buildStepIndicator('Artists', _progress >= 0.5, colorScheme),
-            _buildStepIndicator('Songs', _progress >= 0.75, colorScheme),
-            _buildStepIndicator('Relations', _progress >= 1.0, colorScheme),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStepIndicator(
-    String label,
-    bool isCompleted,
-    ColorScheme colorScheme,
-  ) {
+  Widget _buildErrorWidget(ColorScheme colorScheme) {
     return Column(
       children: [
         Container(
-          width: 24,
-          height: 24,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color:
-                isCompleted
-                    ? colorScheme.primary
-                    : colorScheme.surfaceVariant.withOpacity(0.5),
+            color: colorScheme.errorContainer,
             shape: BoxShape.circle,
-            border: Border.all(
-              color:
-                  isCompleted
-                      ? colorScheme.primary
-                      : colorScheme.outlineVariant,
-              width: 2,
-            ),
           ),
-          child:
-              isCompleted
-                  ? Icon(Icons.check, color: colorScheme.onPrimary, size: 16)
-                  : null,
+          child: Icon(Icons.error_outline, size: 40, color: colorScheme.error),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 20),
         Text(
-          label,
+          'Something went wrong',
           style: TextStyle(
-            fontSize: 12,
-            color:
-                isCompleted
-                    ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant.withOpacity(0.7),
-            fontWeight: isCompleted ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildErrorView(ColorScheme colorScheme, TextTheme textTheme) {
-    return Column(
-      children: [
-        Icon(Icons.error_outline, size: 48, color: colorScheme.error),
-        const SizedBox(height: 16),
-        Text(
-          'Sync Error',
-          style: textTheme.titleLarge?.copyWith(
-            color: colorScheme.error,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: colorScheme.error,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Text(
           _errorMessage.length > 100
               ? '${_errorMessage.substring(0, 100)}...'
               : _errorMessage,
-          style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
           textAlign: TextAlign.center,
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 24),
         ElevatedButton.icon(
           onPressed: _retrySync,
           icon: const Icon(Icons.refresh),
-          label: const Text('Retry'),
+          label: const Text('Try Again'),
           style: ElevatedButton.styleFrom(
             backgroundColor: colorScheme.primary,
             foregroundColor: colorScheme.onPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(30),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSuccessView(ColorScheme colorScheme, TextTheme textTheme) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: colorScheme.primaryContainer,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.check,
-            size: 32,
-            color: colorScheme.onPrimaryContainer,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Setup Complete!',
-          style: textTheme.titleLarge?.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Taking you to the app...',
-          style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
           ),
         ),
       ],
