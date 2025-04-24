@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tononkira_mobile/features/favorites/page.dart';
 import 'package:tononkira_mobile/features/home/page.dart';
 import 'package:tononkira_mobile/features/lyrics/page.dart';
 import 'package:tononkira_mobile/features/onboarding/page.dart';

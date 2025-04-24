@@ -62,14 +62,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class FavoritesTab extends StatelessWidget {
-  const FavoritesTab({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Favorites Tab')));
-  }
-}
-
 class SongDetailsScreen extends StatelessWidget {
   final String songId;
   const SongDetailsScreen({super.key, required this.songId});
