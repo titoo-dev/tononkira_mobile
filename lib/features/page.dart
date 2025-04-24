@@ -62,15 +62,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class SongDetailsScreen extends StatelessWidget {
-  final String songId;
-  const SongDetailsScreen({super.key, required this.songId});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Text('Song Details: $songId')));
-  }
-}
-
 class NotFoundScreen extends StatelessWidget {
   const NotFoundScreen({super.key});
   @override

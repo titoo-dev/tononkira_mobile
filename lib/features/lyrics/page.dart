@@ -358,7 +358,7 @@ class _LyricsTabState extends State<LyricsTab> {
           song: song,
           onTap:
               () => context.pushNamed(
-                'songDetails',
+                'lyricDetails',
                 pathParameters: {'id': song.id.toString()},
               ),
         );

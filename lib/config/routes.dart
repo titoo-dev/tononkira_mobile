@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tononkira_mobile/features/favorites/page.dart';
+import 'package:tononkira_mobile/features/home/lyric_details/page.dart';
 import 'package:tononkira_mobile/features/home/page.dart';
 import 'package:tononkira_mobile/features/lyrics/page.dart';
 import 'package:tononkira_mobile/features/onboarding/page.dart';
 import 'package:tononkira_mobile/features/page.dart';
+import 'package:tononkira_mobile/models/models.dart';
 
 /// Configuration class for application routes
 class AppRoutes {
@@ -64,11 +66,24 @@ class AppRoutes {
             builder: (context, state) => const HomeTab(),
             routes: [
               GoRoute(
-                path: 'song/:id',
-                name: 'songDetails',
+                path: 'lyric/:id',
+                name: 'lyricDetails',
                 builder: (context, state) {
-                  final songId = state.pathParameters['id'];
-                  return SongDetailsScreen(songId: songId ?? '');
+                  final lyricId = state.pathParameters['id'];
+
+                  // Creating a sample song with mock data
+                  // In a production app, you would fetch this from an API or database
+                  return LyricDetailsPage(
+                    song: Song(
+                      id: int.parse(lyricId ?? '1'),
+                      title: 'Amazing Grace',
+                      slug: 'amazing-grace',
+                      createdAt: DateTime.now().subtract(
+                        const Duration(days: 100),
+                      ),
+                      updatedAt: DateTime.now(),
+                    ),
+                  );
                 },
               ),
             ],
