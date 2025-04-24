@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:tononkira_mobile/models/models.dart';
 import 'package:go_router/go_router.dart';
 
-/// A beautiful favorites page that displays user's liked songs
-/// following Material 3 design principles
+/// A beautiful favorites page that displays user's liked lyrics in a modern layout
+/// following latest Material 3 design trends
 class FavoritesTab extends StatefulWidget {
   const FavoritesTab({super.key});
 
@@ -11,13 +11,15 @@ class FavoritesTab extends StatefulWidget {
   State<FavoritesTab> createState() => _FavoritesTabState();
 }
 
-class _FavoritesTabState extends State<FavoritesTab> {
+class _FavoritesTabState extends State<FavoritesTab>
+    with SingleTickerProviderStateMixin {
   // Filter options
   String _currentFilter = 'Recent';
   final TextEditingController _searchController = TextEditingController();
   bool _showSearchBar = false;
   String _searchQuery = '';
   bool _isLoading = true;
+  late AnimationController _animationController;
 
   // Sample data for demonstration - would be fetched from backend in production
   List<Song> _favoriteSongs = [];
@@ -25,6 +27,12 @@ class _FavoritesTabState extends State<FavoritesTab> {
   @override
   void initState() {
     super.initState();
+    // Animation controller for staggered animations
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
     // Simulate loading data
     _loadFavorites();
   }
@@ -134,6 +142,7 @@ class _FavoritesTabState extends State<FavoritesTab> {
         _favoriteSongs = sampleFavorites;
         _isLoading = false;
       });
+      _animationController.forward();
     }
   }
 
@@ -246,6 +255,7 @@ class _FavoritesTabState extends State<FavoritesTab> {
   @override
   void dispose() {
     _searchController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -273,7 +283,7 @@ class _FavoritesTabState extends State<FavoritesTab> {
                       )
                       : filteredFavorites.isEmpty
                       ? _buildEmptyState(context)
-                      : _buildSongsList(filteredFavorites),
+                      : _buildLyricsList(filteredFavorites),
             ),
           ],
         ),
@@ -297,10 +307,10 @@ class _FavoritesTabState extends State<FavoritesTab> {
               children: [
                 // Title with decorative element
                 Text(
-                  'Favorites',
+                  'Favorite Lyrics',
                   style: textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -308,7 +318,7 @@ class _FavoritesTabState extends State<FavoritesTab> {
                   height: 16,
                   width: 16,
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
+                    color: colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -427,68 +437,117 @@ class _FavoritesTabState extends State<FavoritesTab> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Using a more modern and minimalist empty state design
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Attractive icon with container
+          // Modern illustration container
           Container(
-            width: 120,
-            height: 120,
+            width: 150,
+            height: 150,
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.3),
-              shape: BoxShape.circle,
+              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(75),
             ),
-            child: Icon(
-              Icons.favorite,
-              size: 60,
-              color: colorScheme.primary.withOpacity(0.7),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.menu_book_outlined,
+                  size: 70,
+                  color: colorScheme.primary.withOpacity(0.7),
+                ),
+                Positioned(
+                  bottom: 35,
+                  right: 35,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Icon(
+                      Icons.favorite,
+                      size: 24,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'No Favorites Yet',
-            style: textTheme.titleLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Songs you like will appear here for quick access',
-            style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
-            ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
-          FilledButton.icon(
+          Text(
+            'No Saved Lyrics',
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: 260,
+            child: Text(
+              'Lyrics you heart will appear here for quick access and offline reading',
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.tonal(
             onPressed: () {
               // Navigate to browse lyrics
               context.go('/lyrics');
             },
-            icon: const Icon(Icons.music_note),
-            label: const Text('Browse Lyrics'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text('Discover Lyrics'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSongsList(List<Song> songs) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      separatorBuilder:
-          (context, index) => const Divider(height: 1, indent: 70),
+  // Build a modern list of favorite lyrics
+  Widget _buildLyricsList(List<Song> songs) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
       itemCount: songs.length,
       itemBuilder: (context, index) {
-        final song = songs[index];
-        return FavoriteSongListTile(
-          song: song,
-          onTap:
-              () => context.pushNamed(
-                'songDetails',
-                pathParameters: {'id': song.id.toString()},
+        // Create a delayed animation for each item
+        final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Interval(
+              (index / songs.length) * 0.5, // Stagger start times
+              0.5 + (index / songs.length) * 0.5, // Stagger end times
+              curve: Curves.easeOut,
+            ),
+          ),
+        );
+
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.2, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: FavoriteLyricCard(
+                song: songs[index],
+                onTap:
+                    () => context.pushNamed(
+                      'songDetails',
+                      pathParameters: {'id': songs[index].id.toString()},
+                    ),
+                onRemove: () => _removeFavorite(songs[index]),
               ),
-          onRemove: () => _removeFavorite(song),
+            ),
+          ),
         );
       },
     );
@@ -506,54 +565,53 @@ class SearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Hero(
-      tag: 'favoritesSearchBar',
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-          color: colorScheme.surfaceVariant.withOpacity(0.5),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: Row(
-          children: [
-            Icon(Icons.search, color: colorScheme.primary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                onChanged: onChanged,
-                decoration: InputDecoration(
-                  hintText: 'Search favorites...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(
-                    color: colorScheme.onSurface.withOpacity(0.6),
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        color:
+            Theme.of(context).brightness == Brightness.light
+                ? colorScheme.surfaceVariant.withOpacity(0.7)
+                : colorScheme.surfaceVariant,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              decoration: InputDecoration(
+                hintText: 'Search lyrics...',
+                border: InputBorder.none,
+                hintStyle: TextStyle(
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.7),
                 ),
               ),
             ),
-            IconButton(
-              icon: Icon(Icons.clear, color: colorScheme.primary),
-              onPressed: () {
-                controller.clear();
-                onChanged?.call('');
-              },
-              tooltip: 'Clear search',
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            icon: Icon(Icons.clear, color: colorScheme.onSurfaceVariant),
+            onPressed: () {
+              controller.clear();
+              onChanged?.call('');
+            },
+            tooltip: 'Clear search',
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Beautiful song list tile with visual enhancements for favorites
-class FavoriteSongListTile extends StatelessWidget {
+/// Beautiful lyric card with modern Material 3 design for favorites list view
+class FavoriteLyricCard extends StatelessWidget {
   final Song song;
   final VoidCallback onTap;
   final VoidCallback onRemove;
 
-  const FavoriteSongListTile({
+  const FavoriteLyricCard({
     super.key,
     required this.song,
     required this.onTap,
@@ -569,114 +627,182 @@ class FavoriteSongListTile extends StatelessWidget {
     final imageUrl =
         song.artists.isNotEmpty ? song.artists.first.imageUrl : null;
 
-    return Dismissible(
-      key: Key('favorite-${song.id}'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: colorScheme.error,
-        child: Icon(Icons.delete_outline, color: colorScheme.onError),
+    // Create a modern card with Material 3 styling
+    return Card(
+      elevation: 0, // Flatter design trend
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withOpacity(0.3),
+          width: 1,
+        ),
       ),
-      onDismissed: (_) => onRemove(),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            child: Row(
-              children: [
-                // Artist image or styled container
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: 56,
-                    height: 56,
-                    child:
-                        imageUrl != null
-                            ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder:
-                                  (_, __, ___) => _buildArtistPlaceholder(
-                                    context,
-                                    artistName,
-                                  ),
-                            )
-                            : _buildArtistPlaceholder(context, artistName),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Artist/Lyric image or placeholder
+              Hero(
+                tag: 'lyric_${song.id}',
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: colorScheme.secondaryContainer,
                   ),
+                  clipBehavior: Clip.antiAlias,
+                  child:
+                      imageUrl != null
+                          ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder:
+                                (_, __, ___) => _buildArtistPlaceholder(
+                                  context,
+                                  artistName,
+                                ),
+                          )
+                          : _buildArtistPlaceholder(context, artistName),
                 ),
+              ),
 
-                const SizedBox(width: 16),
+              const SizedBox(width: 16),
 
-                // Song details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song.title,
-                        style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        artistName,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // View counter with icon
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              // Lyric details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title with lyrics indicator
                     Row(
                       children: [
                         Icon(
-                          Icons.remove_red_eye_outlined,
-                          size: 16,
-                          color: colorScheme.onSurfaceVariant,
+                          Icons.music_note,
+                          size: 14,
+                          color: colorScheme.primary,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          _formatViews(song.views ?? 0),
-                          style: textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                        Expanded(
+                          child: Text(
+                            song.title,
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    // Favorite button
-                    SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          Icons.favorite,
-                          size: 18,
-                          color: colorScheme.primary,
-                        ),
-                        onPressed: onRemove,
-                        tooltip: 'Remove from favorites',
+
+                    const SizedBox(height: 6),
+
+                    // Artist name
+                    Text(
+                      'by $artistName',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Stats row
+                    Row(
+                      children: [
+                        // View count
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.remove_red_eye_outlined,
+                              size: 14,
+                              color: colorScheme.onSurfaceVariant.withOpacity(
+                                0.7,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatViews(song.views ?? 0),
+                              style: textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(width: 16),
+
+                        // Added date
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              size: 14,
+                              color: colorScheme.onSurfaceVariant.withOpacity(
+                                0.7,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatDate(song.createdAt),
+                              style: textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              // Action buttons
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Remove from favorites
+                  IconButton(
+                    onPressed: onRemove,
+                    icon: Icon(
+                      Icons.favorite,
+                      color: colorScheme.primary,
+                      size: 22,
+                    ),
+                    tooltip: 'Remove from favorites',
+                    style: IconButton.styleFrom(
+                      backgroundColor: colorScheme.primaryContainer.withOpacity(
+                        0.4,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Quick actions menu
+                  IconButton(
+                    onPressed: () {
+                      _showQuickActionsMenu(context);
+                    },
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: colorScheme.onSurfaceVariant,
+                      size: 22,
+                    ),
+                    tooltip: 'More options',
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -694,19 +820,84 @@ class FavoriteSongListTile extends StatelessWidget {
     }
   }
 
+  // Format date in a readable format
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return '$weeks ${weeks == 1 ? 'week' : 'weeks'} ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  // Show quick actions menu for the lyric
+  void _showQuickActionsMenu(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      builder:
+          (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.share, color: colorScheme.primary),
+                  title: const Text('Share lyrics'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Implement sharing functionality
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.download_outlined,
+                    color: colorScheme.primary,
+                  ),
+                  title: const Text('Download for offline'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Implement download functionality
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.edit_note, color: colorScheme.primary),
+                  title: const Text('Add to collection'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Implement collection functionality
+                  },
+                ),
+              ],
+            ),
+          ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+    );
+  }
+
   // Build a placeholder for when artist image is not available
   Widget _buildArtistPlaceholder(BuildContext context, String artistName) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Create a deterministic but varied color based on artist name
-    final int nameHash = artistName.hashCode;
-
+    // Create a modern gradient background
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colorScheme.primaryContainer,
-            colorScheme.primary.withOpacity(0.5),
+            colorScheme.secondaryContainer,
+            colorScheme.tertiaryContainer,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -716,8 +907,8 @@ class FavoriteSongListTile extends StatelessWidget {
         child: Text(
           artistName.isNotEmpty ? artistName[0].toUpperCase() : '?',
           style: TextStyle(
-            color: colorScheme.onPrimaryContainer,
-            fontSize: 20,
+            color: colorScheme.onSecondaryContainer,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -726,7 +917,7 @@ class FavoriteSongListTile extends StatelessWidget {
   }
 }
 
-/// Bottom sheet for filtering favorite songs
+/// Bottom sheet for filtering favorite lyrics
 class FavoritesFilterBottomSheet extends StatelessWidget {
   final ScrollController scrollController;
   final ValueChanged<String> onFilterSelected;
@@ -815,16 +1006,12 @@ class FavoritesFilterBottomSheet extends StatelessWidget {
           // Apply button
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton.icon(
+            child: FilledButton(
               onPressed: onApplySelected,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                foregroundColor: colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              style: FilledButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
               ),
-              icon: const Icon(Icons.check),
-              label: const Text('Apply'),
+              child: const Text('Apply'),
             ),
           ),
         ],
@@ -842,7 +1029,7 @@ class FavoritesFilterBottomSheet extends StatelessWidget {
     final isSelected = currentFilter == value;
 
     return Material(
-      color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+      color: isSelected ? colorScheme.secondaryContainer : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: () => onFilterSelected(value),
@@ -855,7 +1042,7 @@ class FavoritesFilterBottomSheet extends StatelessWidget {
                 icon,
                 color:
                     isSelected
-                        ? colorScheme.onPrimaryContainer
+                        ? colorScheme.onSecondaryContainer
                         : colorScheme.onSurface,
               ),
               const SizedBox(width: 16),
@@ -865,7 +1052,7 @@ class FavoritesFilterBottomSheet extends StatelessWidget {
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color:
                       isSelected
-                          ? colorScheme.onPrimaryContainer
+                          ? colorScheme.onSecondaryContainer
                           : colorScheme.onSurface,
                 ),
               ),
