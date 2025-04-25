@@ -499,7 +499,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                 song: songs[index],
                 onTap:
                     () => context.pushNamed(
-                      'songDetails',
+                      'lyricDetails',
                       pathParameters: {'id': songs[index].id.toString()},
                     ),
                 onRemove: () => _removeFavorite(songs[index]),

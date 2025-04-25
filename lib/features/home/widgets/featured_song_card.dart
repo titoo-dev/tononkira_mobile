@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tononkira_mobile/models/models.dart';
 
 /// Featured song card with material design styling and improved readability
@@ -26,69 +27,59 @@ class FeaturedSongCard extends StatelessWidget {
             width: 1,
           ),
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Artist Image or Placeholder
-            song.artists.isNotEmpty && song.artists.first.imageUrl != null
-                ? ArtistImage(imageUrl: song.artists.first.imageUrl)
-                : ArtistPlaceholder(
-                  artistName:
-                      song.artists.isNotEmpty
-                          ? song.artists.first.name
-                          : "Unknown",
-                ),
+        child: InkWell(
+          onTap: () {
+            // Navigate to song details page using GoRouter
+            context.pushNamed(
+              'lyricDetails',
+              pathParameters: {'id': song.id.toString()},
+            );
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Artist Image or Placeholder
+              song.artists.isNotEmpty && song.artists.first.imageUrl != null
+                  ? ArtistImage(imageUrl: song.artists.first.imageUrl)
+                  : ArtistPlaceholder(
+                    artistName:
+                        song.artists.isNotEmpty
+                            ? song.artists.first.name
+                            : "Unknown",
+                  ),
 
-            // Enhanced Gradient Overlay for better readability
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.5, 1.0],
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.85), // Darker at bottom
-                  ],
+              // Enhanced Gradient Overlay for better readability
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.5, 1.0],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.85), // Darker at bottom
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // Song Info with improved contrast
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Song title with text shadow for better readability
-                  Text(
-                    song.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      shadows: [
-                        Shadow(
-                          blurRadius: 3.0,
-                          color: Colors.black,
-                          offset: Offset(0.5, 0.5),
-                        ),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  if (song.artists.isNotEmpty)
+              // Song Info with improved contrast
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Song title with text shadow for better readability
                     Text(
-                      song.artists.first.name,
+                      song.title,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                         shadows: [
                           Shadow(
-                            blurRadius: 2.0,
+                            blurRadius: 3.0,
                             color: Colors.black,
                             offset: Offset(0.5, 0.5),
                           ),
@@ -97,23 +88,42 @@ class FeaturedSongCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 8),
-                  // Container with slight opacity for view count
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                    const SizedBox(height: 4),
+                    if (song.artists.isNotEmpty)
+                      Text(
+                        song.artists.first.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 2.0,
+                              color: Colors.black,
+                              offset: Offset(0.5, 0.5),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 8),
+                    // Container with slight opacity for view count
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: SizedBox.shrink(),
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: SizedBox.shrink(),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tononkira_mobile/data/database_helper.dart';
 import 'package:tononkira_mobile/features/home/widgets/featured_song_card.dart';
 import 'package:tononkira_mobile/models/models.dart';
@@ -107,7 +108,13 @@ class _RecentLyricItemState extends State<RecentLyricItem> {
           onPressed: _toggleFavorite,
           tooltip: _isFavorite ? 'Remove from favorites' : 'Add to favorites',
         ),
-        onTap: () {},
+        onTap: () {
+          // Navigate to the lyric details page
+          context.pushNamed(
+            'lyricDetails',
+            pathParameters: {'id': widget.song.id.toString()},
+          );
+        },
       ),
     );
   }
