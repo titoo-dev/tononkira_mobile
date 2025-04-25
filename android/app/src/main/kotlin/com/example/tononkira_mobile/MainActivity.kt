@@ -1,4 +1,4 @@
-package com.example.tononkira_mobile
+package com.titoodev.tononkira_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
