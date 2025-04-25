@@ -16,18 +16,16 @@ class ProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: colorScheme.primaryContainer.withValues(alpha: 0.8),
+        image: DecorationImage(
+          image: AssetImage('assets/images/tononkira_logo.png'),
+          fit: BoxFit.contain,
+        ),
       ),
       child: IconButton(
-        icon: Icon(
-          Icons.info_outline_rounded,
-          color: colorScheme.onPrimaryContainer,
-        ),
+        icon: Icon(null),
         tooltip: 'App Information',
         onPressed: () => _showInfoBottomSheet(context),
       ),

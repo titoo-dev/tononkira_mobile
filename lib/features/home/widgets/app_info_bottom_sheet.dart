@@ -45,11 +45,10 @@ class AppInfoBottomSheet extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   color: colorScheme.primaryContainer,
-                ),
-                child: Icon(
-                  Icons.music_note_rounded,
-                  size: 36,
-                  color: colorScheme.primary,
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/tononkira_logo.png'),
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -98,13 +97,25 @@ class AppInfoBottomSheet extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
+              onPressed: () async {
+                // Show checking for updates message
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  const SnackBar(
                     content: Text('Checking for updates...'),
                     behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 2),
                   ),
                 );
+
+                // Simulate checking process with a delay
+                Future.delayed(const Duration(seconds: 3), () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Your app is up to date!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                });
               },
               icon: const Icon(Icons.system_update_outlined),
               label: const Text('Check for Updates'),
