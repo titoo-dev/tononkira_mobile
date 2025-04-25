@@ -10,6 +10,8 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import 'dart:developer' as dev;
 
+import 'package:tononkira_mobile/models/models.dart';
+
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
@@ -261,5 +263,52 @@ class DatabaseHelper {
       dev.log('Error loading or parsing SQL script: $e');
       rethrow;
     }
+  }
+
+  Future<List<Song>> transformSongsData(
+    List<Map<String, dynamic>> songsData,
+  ) async {
+    final result = <Song>[];
+    final db = await DatabaseHelper.instance.database;
+
+    for (final songData in songsData) {
+      final artistsData = await db.rawQuery(
+        '''
+        SELECT a.id, a.name, a.slug, a.imageUrl, a.createdAt, a.updatedAt
+        FROM Artist a
+        JOIN _ArtistToSong ats ON ats.A = a.id
+        WHERE ats.B = ?
+      ''',
+        [songData['id']],
+      );
+
+      final artists =
+          artistsData
+              .map(
+                (artistData) => Artist(
+                  id: artistData['id'] as int,
+                  name: artistData['name'] as String,
+                  slug: artistData['slug'] as String,
+                  imageUrl: artistData['imageUrl'] as String?,
+                  createdAt: DateTime.parse(artistData['createdAt'] as String),
+                  updatedAt: DateTime.parse(artistData['updatedAt'] as String),
+                ),
+              )
+              .toList();
+
+      result.add(
+        Song(
+          id: songData['id'] as int,
+          title: songData['title'] as String,
+          slug: songData['slug'] as String,
+          views: songData['views'] as int? ?? 0,
+          createdAt: DateTime.parse(songData['createdAt'] as String),
+          updatedAt: DateTime.parse(songData['updatedAt'] as String),
+          artists: artists,
+        ),
+      );
+    }
+
+    return result;
   }
 }
