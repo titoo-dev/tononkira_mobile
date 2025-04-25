@@ -139,9 +139,11 @@ class DatabaseHelper {
 
     // Create the favorites table
     await db.execute('''
-      CREATE TABLE favorites (
+      CREATE TABLE "Favorites" (
         id INTEGER PRIMARY KEY,
-        title TEXT NOT NULL
+        "songId" INTEGER NOT NULL,
+        "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TEXT NOT NULL
       )
     ''');
 
@@ -160,24 +162,6 @@ class DatabaseHelper {
     ''');
 
     dev.log('Tables created successfully');
-  }
-
-  // Example: insert favorite
-  Future<int> insertFavorite(Map<String, dynamic> row) async {
-    dev.log('Inserting favorite: ${row.toString()}');
-    final db = await instance.database;
-    final id = await db.insert('favorites', row);
-    dev.log('Favorite inserted with id: $id');
-    return id;
-  }
-
-  // Example: get all favorites
-  Future<List<Map<String, dynamic>>> getFavorites() async {
-    dev.log('Fetching all favorites');
-    final db = await instance.database;
-    final results = await db.query('favorites');
-    dev.log('Fetched ${results.length} favorites');
-    return results;
   }
 
   // Import data from SQL script files in assets folder with progress tracking
