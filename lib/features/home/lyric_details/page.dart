@@ -6,8 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:tononkira_mobile/data/database_helper.dart';
+import 'package:tononkira_mobile/features/home/lyric_details/widgets/favorite_button.dart';
 import 'package:tononkira_mobile/models/lyrics_analysis.dart';
 import 'package:tononkira_mobile/models/models.dart';
+import 'package:tononkira_mobile/shared/loader.dart';
 
 /// A beautifully designed lyric details page showing song lyrics with artist information
 /// following Material 3 design principles
@@ -140,7 +142,7 @@ class _LyricDetailsPageState extends State<LyricDetailsPage>
             onPressed: () => context.pop(),
           ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: Loader()),
       );
     }
 
@@ -231,7 +233,15 @@ class _LyricDetailsPageState extends State<LyricDetailsPage>
       ),
       actions: [
         // Like button with animation
-        _buildLikeButton(),
+        FavoriteButton(
+          songId: _song!.id,
+          initialLiked: _isLiked,
+          onLikeChanged: (liked) {
+            setState(() {
+              _isLiked = liked;
+            });
+          },
+        ),
         // Share button
         IconButton(
           icon: Icon(Icons.share_rounded, color: colorScheme.onSurfaceVariant),
@@ -270,8 +280,8 @@ class _LyricDetailsPageState extends State<LyricDetailsPage>
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  colorScheme.surface.withOpacity(0.5),
-                  colorScheme.surface.withOpacity(0.7),
+                  colorScheme.surface.withValues(alpha: 0.5),
+                  colorScheme.surface.withValues(alpha: 0.7),
                   colorScheme.surface,
                 ],
                 stops: const [0.0, 0.6, 0.8, 1.0],
@@ -280,37 +290,6 @@ class _LyricDetailsPageState extends State<LyricDetailsPage>
           ),
         ),
       ],
-    );
-  }
-
-  // Animated like button
-  Widget _buildLikeButton() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return AnimatedBuilder(
-      animation: _likeAnimationController,
-      builder: (context, child) {
-        final scale = 1.0 + _likeAnimationController.value * 0.4;
-
-        return IconButton(
-          icon: Transform.scale(
-            scale: scale,
-            child: Icon(
-              _isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              color: _isLiked ? Colors.redAccent : colorScheme.onSurfaceVariant,
-            ),
-          ),
-          onPressed: () {
-            setState(() {
-              _isLiked = !_isLiked;
-              if (_isLiked) {
-                _likeAnimationController.forward(from: 0.0);
-              }
-            });
-          },
-          tooltip: _isLiked ? 'Remove from favorites' : 'Add to favorites',
-        );
-      },
     );
   }
 
