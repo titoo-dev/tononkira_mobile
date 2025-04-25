@@ -108,24 +108,7 @@ class FeaturedSongCard extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.remove_red_eye,
-                          size: 14,
-                          color: Colors.white70,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          "${song.views ?? 0}",
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: SizedBox.shrink(),
                   ),
                 ],
               ),

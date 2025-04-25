@@ -65,11 +65,14 @@ class SectionHeaderWithAction extends StatelessWidget {
           title,
           style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
-        TextButton(
-          onPressed: onActionPressed,
-          child: Text(
-            actionLabel,
-            style: TextStyle(color: colorScheme.primary),
+        Opacity(
+          opacity: 0,
+          child: TextButton(
+            onPressed: null,
+            child: Text(
+              actionLabel,
+              style: TextStyle(color: colorScheme.primary),
+            ),
           ),
         ),
       ],
