@@ -1,5 +1,8 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tononkira_mobile/data/database_helper.dart';
 import 'package:tononkira_mobile/models/models.dart';
 
 /// A beautiful lyrics tab screen displaying all available lyrics with filtering options
@@ -19,81 +22,147 @@ class _LyricsTabState extends State<LyricsTab> {
   SortOption _sortOption = SortOption.title;
   String _searchQuery = '';
 
-  // Sample data for demonstration
-  final List<Song> _songs = List.generate(
-    50,
-    (index) => Song(
-      id: index + 1,
-      title: _generateSongTitle(index),
-      slug: "song-${index + 1}",
-      views: 100 + (index * 10),
-      createdAt: DateTime.now().subtract(Duration(days: index)),
-      updatedAt: DateTime.now(),
-      artists: [
-        Artist(
-          id: (index % 5) + 1,
-          name: _generateArtistName(index % 5),
-          slug: "artist-${(index % 5) + 1}",
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ],
-    ),
-  );
+  // Songs data
+  List<Song> _songs = [];
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  final int _pageSize = 500;
+  int _currentPage = 0;
+  bool _hasMoreData = true;
+  final ScrollController _scrollController = ScrollController();
 
-  // Generate song titles for sample data
-  static String _generateSongTitle(int index) {
-    final titles = [
-      "Veloma",
-      "Tsy Haiko",
-      "Ianao",
-      "Nofy Ratsy",
-      "Embona",
-      "Tonga Soa",
-      "Lasa Ny Andro",
-      "Tsara Ny Mino",
-      "Ho Avy Aho",
-      "Fitiavana",
-      "Tanindrazana",
-      "Tiana Ianao",
-      "Miandry Anao",
-      "Misaotra",
-      "Tsy Ampy",
-      "Mba Jereo",
-      "Fitia Tsy Miova",
-      "Izao no Izy",
-      "Tsy Very",
-      "Mandalo",
-    ];
-    return "${titles[index % titles.length]} ${index + 1}";
+  @override
+  void initState() {
+    super.initState();
+    _loadSongs();
+    _scrollController.addListener(_scrollListener);
   }
 
-  // Generate artist names for sample data
-  static String _generateArtistName(int index) {
-    final artists = [
-      "Mahaleo",
-      "Ambondrona",
-      "Ny Ainga",
-      "Tarika Johary",
-      "Njakatiana",
-    ];
-    return artists[index];
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent * 0.8 &&
+        !_isLoadingMore &&
+        _hasMoreData) {
+      _loadMoreSongs();
+    }
+  }
+
+  Future<void> _loadSongs() async {
+    setState(() {
+      _isLoading = true;
+      _currentPage = 0;
+      _songs = [];
+    });
+
+    await _fetchSongsPage();
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _loadMoreSongs() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    await _fetchSongsPage();
+
+    setState(() {
+      _isLoadingMore = false;
+    });
+  }
+
+  Future<void> _fetchSongsPage() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+
+      // Determine sort field based on current settings
+      String orderBy;
+      switch (_sortOption) {
+        case SortOption.title:
+          orderBy =
+              'title ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'}';
+          break;
+        case SortOption.artist:
+          orderBy =
+              'title ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'}'; // Will sort by artist later in memory
+          break;
+        case SortOption.views:
+          orderBy =
+              'views ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'} NULLS LAST';
+          break;
+        case SortOption.date:
+          orderBy =
+              'created_at ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'}';
+          break;
+      }
+
+      final songsData = await db.query(
+        DatabaseHelper.kDbSongTableName,
+        orderBy: orderBy,
+        limit: _pageSize,
+        offset: _currentPage * _pageSize,
+      );
+
+      final newSongs = await DatabaseHelper.instance.transformSongsData(
+        songsData,
+      );
+
+      // Handle popular filter directly in the query for better performance
+      if (_currentFilter == 'popular') {
+        final popularSongsData = await db.query(
+          DatabaseHelper.kDbSongTableName,
+          orderBy: 'views DESC NULLS LAST',
+          limit: _pageSize,
+        );
+        final popularSongs = await DatabaseHelper.instance.transformSongsData(
+          popularSongsData,
+        );
+        setState(() {
+          _songs = popularSongs;
+          _hasMoreData = popularSongsData.length == _pageSize;
+        });
+        return;
+      }
+
+      setState(() {
+        if (_currentPage == 0) {
+          _songs = newSongs;
+        } else {
+          _songs.addAll(newSongs);
+        }
+        _currentPage++;
+        _hasMoreData = newSongs.length == _pageSize;
+      });
+    } catch (e) {
+      dev.log('Error loading songs: $e');
+      setState(() {
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     super.dispose();
   }
 
   // Filter and sort songs based on current settings
   List<Song> _getFilteredAndSortedSongs() {
+    if (_songs.isEmpty) return [];
+
     List<Song> filteredSongs = List<Song>.from(_songs);
 
-    // Apply filter
+    // Apply filter - popular filter is handled directly in the query
     if (_currentFilter == 'popular') {
-      filteredSongs.sort((a, b) => b.views?.compareTo(a.views ?? 0) ?? 0);
-      return filteredSongs; // No additional sorting needed for popular filter
+      return filteredSongs; // Already sorted in the query
     }
 
     // Apply search if needed
@@ -111,15 +180,8 @@ class _LyricsTabState extends State<LyricsTab> {
           }).toList();
     }
 
-    // Apply sorting
-    if (_sortOption == SortOption.title) {
-      filteredSongs.sort(
-        (a, b) =>
-            _sortDirection == SortDirection.ascending
-                ? a.title.compareTo(b.title)
-                : b.title.compareTo(a.title),
-      );
-    } else if (_sortOption == SortOption.artist) {
+    // Artist sorting needs to be handled in memory since it involves relationships
+    if (_sortOption == SortOption.artist) {
       filteredSongs.sort((a, b) {
         final artistA = a.artists.isNotEmpty ? a.artists.first.name : '';
         final artistB = b.artists.isNotEmpty ? b.artists.first.name : '';
@@ -127,20 +189,6 @@ class _LyricsTabState extends State<LyricsTab> {
             ? artistA.compareTo(artistB)
             : artistB.compareTo(artistA);
       });
-    } else if (_sortOption == SortOption.views) {
-      filteredSongs.sort(
-        (a, b) =>
-            _sortDirection == SortDirection.ascending
-                ? (a.views ?? 0).compareTo(b.views ?? 0)
-                : (b.views ?? 0).compareTo(a.views ?? 0),
-      );
-    } else if (_sortOption == SortOption.date) {
-      filteredSongs.sort(
-        (a, b) =>
-            _sortDirection == SortDirection.ascending
-                ? a.createdAt.compareTo(b.createdAt)
-                : b.createdAt.compareTo(a.createdAt),
-      );
     }
 
     return filteredSongs;
@@ -162,7 +210,9 @@ class _LyricsTabState extends State<LyricsTab> {
             // Main songs list
             Expanded(
               child:
-                  filteredSongs.isEmpty
+                  _isLoading
+                      ? _buildLoadingState()
+                      : filteredSongs.isEmpty
                       ? _buildEmptyState(context)
                       : _buildSongsList(filteredSongs),
             ),
@@ -170,6 +220,10 @@ class _LyricsTabState extends State<LyricsTab> {
         ),
       ),
     );
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildAppBar(BuildContext context) {
@@ -348,11 +402,16 @@ class _LyricsTabState extends State<LyricsTab> {
 
   Widget _buildSongsList(List<Song> songs) {
     return ListView.separated(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       separatorBuilder:
           (context, index) => const Divider(height: 1, indent: 70),
-      itemCount: songs.length,
+      itemCount: songs.length + (_hasMoreData ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index == songs.length) {
+          return _buildLoadMoreIndicator();
+        }
+
         final song = songs[index];
         return SongListTile(
           song: song,
@@ -363,6 +422,19 @@ class _LyricsTabState extends State<LyricsTab> {
               ),
         );
       },
+    );
+  }
+
+  Widget _buildLoadMoreIndicator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16.0),
+      child: Center(
+        child: SizedBox(
+          height: 30,
+          width: 30,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        ),
+      ),
     );
   }
 
@@ -392,6 +464,8 @@ class _LyricsTabState extends State<LyricsTab> {
                         _sortOption = SortOption.views;
                         _sortDirection = SortDirection.descending;
                       }
+                      // Reload songs with new filter
+                      _loadSongs();
                     });
                     Navigator.pop(context);
                   },
@@ -406,6 +480,8 @@ class _LyricsTabState extends State<LyricsTab> {
                       _sortOption = option;
                       // When changing sort option, reset to "all" filter
                       _currentFilter = 'all';
+                      // Reload songs with new sorting
+                      _loadSongs();
                     });
                   },
                   onSortDirectionChanged: (direction) {
@@ -416,6 +492,8 @@ class _LyricsTabState extends State<LyricsTab> {
                       _sortDirection = direction;
                       // When changing sort direction, reset to "all" filter
                       _currentFilter = 'all';
+                      // Reload songs with new direction
+                      _loadSongs();
                     });
                   },
                   onApplySelected: () {
