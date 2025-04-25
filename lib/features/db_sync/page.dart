@@ -19,25 +19,15 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage> {
   bool _isComplete = false;
   bool _hasError = false;
   String _errorMessage = '';
-  late StreamSubscription<Map<String, dynamic>> _progressSubscription;
+  StreamSubscription<Map<String, dynamic>>? _progressSubscription;
 
   @override
   void initState() {
     super.initState();
-    _checkDatabase().then((value) {
-      if (value) {
-        // If database is already set up, navigate to onboarding
-        if (mounted) {
-          context.go(AppRoutes.onboarding);
-        }
-      } else {
-        // Start the database sync process
-        _startDatabaseSync();
-      }
-    });
+    _checkDatabaseAndNavigate();
   }
 
-  Future<bool> _checkDatabase() async {
+  Future<void> _checkDatabaseAndNavigate() async {
     try {
       // Check if database exists and has data
       final db = await DatabaseHelper.instance.database;
@@ -48,27 +38,26 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage> {
         await db.rawQuery('SELECT COUNT(*) FROM Song'),
       );
 
-      // If database is empty or not properly set up, go to sync page
-      if (!(artistCount == 0 || songCount == 0)) {
-        if (mounted) {
-          context.go(AppRoutes.onboarding);
+      if (mounted) {
+        // If database is empty or not properly set up, go to sync page
+        if (artistCount == 0 || songCount == 0) {
+          _startDatabaseSync();
+        } else {
+          // Database exists and has data, go to home
+          GoRouter.of(context).go(AppRoutes.home);
         }
-        return true;
       }
-      // If database is empty, proceed with sync
-      return false;
     } catch (e) {
       // If there's an error (like tables don't exist), go to sync page
-      dev.log('Database check error: $e');
-      return false;
+      if (mounted) {
+        GoRouter.of(context).go(AppRoutes.databaseSync);
+      }
     }
   }
 
   Future<void> _startDatabaseSync() async {
-    try {
-      _progressSubscription = DatabaseHelper.instance.progressStream.listen((
-        update,
-      ) {
+    _progressSubscription = DatabaseHelper.instance.progressStream.listen(
+      (update) {
         setState(() {
           _progress = update['progress'];
           _status = update['status'];
@@ -77,11 +66,27 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage> {
         if (_progress >= 1.0) {
           _completeSync();
         }
-      });
+      },
+      onError: (e) {
+        dev.log('Error during database sync: $e');
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.toString();
+        });
+      },
+      onDone: () {
+        dev.log('Database sync completed successfully');
+        setState(() {
+          _isComplete = true;
+        });
+      },
+    );
 
+    try {
       await DatabaseHelper.instance.importDataFromSQL('assets/sql');
     } catch (e) {
       setState(() {
+        dev.log('Error during database sync: $e');
         _hasError = true;
         _errorMessage = e.toString();
       });
@@ -114,7 +119,7 @@ class _DatabaseSyncPageState extends State<DatabaseSyncPage> {
 
   @override
   void dispose() {
-    _progressSubscription.cancel();
+    _progressSubscription?.cancel();
     super.dispose();
   }
 

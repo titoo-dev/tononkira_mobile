@@ -1,6 +1,7 @@
 // filepath: lib/data/database_helper.dart
 import 'dart:async';
 import 'dart:io';
+import 'package:async/async.dart';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -18,6 +19,7 @@ class DatabaseHelper {
   static const kDbLyricTableName = 'Lyric';
   static const kDbArtistTableName = 'Artist';
   static const kDbArtistToSongTableName = '_ArtistToSong';
+  static final AsyncMemoizer _memoizer = AsyncMemoizer();
 
   // Progress tracking variables
   double _importProgress = 0.0;
@@ -58,7 +60,10 @@ class DatabaseHelper {
   Future<Database> get database async {
     if (_database != null) return _database!;
     dev.log('Database not initialized, initializing now');
-    _database = await _initDB(kDbFileName);
+
+    await _memoizer.runOnce(() async {
+      _database = await _initDB(kDbFileName);
+    });
     dev.log('Database initialized successfully');
     return _database!;
   }
@@ -188,56 +193,44 @@ class DatabaseHelper {
     final db = await instance.database;
 
     // Start a transaction for better performance and atomicity
-    await db.transaction((txn) async {
-      try {
-        // Import Artist data - 25% of total progress
-        _updateProgress(0.0, "Importing artists");
-        await _importDataFromSQLScript(
-          txn,
-          '$assetsPath/Artist.sql',
-          0.0,
-          0.25,
-        );
-        _updateProgress(0.25, "Artists imported successfully");
+    try {
+      // Import Artist data - 25% of total progress
+      _updateProgress(0.0, "Importing artists");
+      await _importDataFromSQLScript(db, '$assetsPath/Artist.sql', 0.0, 0.25);
+      _updateProgress(0.25, "Artists imported successfully");
 
-        // Import Lyric data - 25% of total progress
-        _updateProgress(0.25, "Importing lyrics");
-        await _importDataFromSQLScript(
-          txn,
-          '$assetsPath/Lyric.sql',
-          0.25,
-          0.25,
-        );
-        _updateProgress(0.5, "Lyrics imported successfully");
+      // Import Lyric data - 25% of total progress
+      _updateProgress(0.25, "Importing lyrics");
+      await _importDataFromSQLScript(db, '$assetsPath/Lyric.sql', 0.25, 0.25);
+      _updateProgress(0.5, "Lyrics imported successfully");
 
-        // Import Song data - 25% of total progress
-        _updateProgress(0.5, "Importing songs");
-        await _importDataFromSQLScript(txn, '$assetsPath/Song.sql', 0.5, 0.25);
-        _updateProgress(0.75, "Songs imported successfully");
+      // Import Song data - 25% of total progress
+      _updateProgress(0.5, "Importing songs");
+      await _importDataFromSQLScript(db, '$assetsPath/Song.sql', 0.5, 0.25);
+      _updateProgress(0.75, "Songs imported successfully");
 
-        // Import ArtistToSong relations - 25% of total progress
-        _updateProgress(0.75, "Importing artist-song relationships");
-        await _importDataFromSQLScript(
-          txn,
-          '$assetsPath/_ArtistToSong.sql',
-          0.75,
-          0.25,
-        );
-        _updateProgress(1.0, "Data import completed successfully");
+      // Import ArtistToSong relations - 25% of total progress
+      _updateProgress(0.75, "Importing artist-song relationships");
+      await _importDataFromSQLScript(
+        db,
+        '$assetsPath/_ArtistToSong.sql',
+        0.75,
+        0.25,
+      );
+      _updateProgress(1.0, "Data import completed successfully");
 
-        dev.log('Data import completed successfully');
-      } catch (e) {
-        _updateProgress(0.0, "Import failed: $e");
-        dev.log('Error during data import: $e');
-        rethrow; // Re-throw to rollback transaction
-      } finally {
-        _isImporting = false;
-      }
-    });
+      dev.log('Data import completed successfully');
+    } catch (e) {
+      _updateProgress(0.0, "Import failed: $e");
+      dev.log('Error during data import: $e');
+      rethrow; // Re-throw to rollback transaction
+    } finally {
+      _isImporting = false;
+    }
   }
 
   Future<void> _importDataFromSQLScript(
-    Transaction txn,
+    Database db,
     String filePath,
     double progressStart,
     double progressSegment,
@@ -249,43 +242,21 @@ class DatabaseHelper {
       final String sqlScript = await rootBundle.loadString(filePath);
 
       // Remove comments and trim whitespace
-      final cleanedScript = sqlScript.replaceAll(RegExp(r'--.*'), '').trim();
+      final cleanedScript = sqlScript.trim();
 
-      // Split the script into statements by semicolon, but keep multi-row inserts together
-      // This will work for most simple SQL scripts
-      final List<String> statements =
-          cleanedScript
-              .split(';')
-              .map((s) => s.trim())
-              .where((s) => s.isNotEmpty)
-              .toList();
+      try {
+        await db.execute(cleanedScript);
 
-      final int total = statements.length;
-      int count = 0;
+        dev.log('Executed SQL script successfully: $filePath');
 
-      dev.log('Found $total SQL statements to execute');
-
-      for (final stmt in statements) {
-        try {
-          await txn.execute('$stmt;');
-          count++;
-
-          // Update progress periodically
-          if (count % 2 == 0 || count == total) {
-            double subProgress = count / total;
-            _updateProgress(
-              progressStart + (subProgress * progressSegment),
-              "Executing SQL statements: $count/$total",
-            );
-          }
-        } catch (e) {
-          dev.log('Error executing SQL statement: $e');
-          dev.log('Problematic statement: $stmt');
-          // Continue with the next statement instead of failing the entire import
-        }
+        // update progress
+        _updateProgress(
+          progressStart + progressSegment,
+          "Executed SQL script: $filePath",
+        );
+      } catch (e) {
+        dev.log('Error executing SQL statement: $e');
       }
-
-      dev.log('Executed $count SQL statements successfully');
     } catch (e) {
       dev.log('Error loading or parsing SQL script: $e');
       rethrow;

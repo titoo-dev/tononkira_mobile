@@ -151,6 +151,7 @@ class _HomeTabState extends State<HomeTab> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
+
             if (snapshot.hasError) {
               return Center(
                 child: Padding(
@@ -164,8 +165,21 @@ class _HomeTabState extends State<HomeTab> {
               );
             }
 
-            final featuredSongs = snapshot.data?['featured'] ?? [];
-            final recentSongs = snapshot.data?['recent'] ?? [];
+            if (!snapshot.hasData) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text(
+                    'No data available. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              );
+            }
+
+            final featuredSongs = snapshot.data!['featured'] ?? [];
+            final recentSongs = snapshot.data!['recent'] ?? [];
 
             return RefreshIndicator(
               onRefresh: () async {
