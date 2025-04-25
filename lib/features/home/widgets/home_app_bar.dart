@@ -7,6 +7,7 @@ import 'package:tononkira_mobile/features/home/widgets/featured_song_card.dart';
 import 'package:tononkira_mobile/features/home/widgets/highlighted_text.dart';
 import 'package:tononkira_mobile/features/home/widgets/profile_button.dart';
 import 'package:tononkira_mobile/models/models.dart';
+import 'package:tononkira_mobile/shared/loader.dart';
 
 /// App bar component with title and search functionality
 class HomeAppBar extends StatefulWidget {
@@ -243,7 +244,7 @@ class SearchResultsSection extends StatelessWidget {
     if (isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32.0),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: Loader(width: 80)),
       );
     }
 

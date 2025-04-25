@@ -8,6 +8,7 @@ import 'package:tononkira_mobile/features/home/widgets/home_app_bar.dart';
 import 'package:tononkira_mobile/features/home/widgets/recent_lyric_item.dart';
 import 'package:tononkira_mobile/features/home/widgets/section_header.dart';
 import 'package:tononkira_mobile/models/models.dart';
+import 'package:tononkira_mobile/shared/loader.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -111,7 +112,7 @@ class _HomeTabState extends State<HomeTab> {
           future: _dataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: Loader());
             }
 
             if (snapshot.hasError) {

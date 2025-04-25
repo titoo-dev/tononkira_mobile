@@ -7,7 +7,6 @@ import 'package:tononkira_mobile/features/home/page.dart';
 import 'package:tononkira_mobile/features/lyrics/page.dart';
 import 'package:tononkira_mobile/features/onboarding/page.dart';
 import 'package:tononkira_mobile/features/page.dart';
-import 'package:tononkira_mobile/models/models.dart';
 
 /// Configuration class for application routes
 class AppRoutes {
@@ -81,21 +80,11 @@ class AppRoutes {
                 path: 'lyric/:id',
                 name: 'lyricDetails',
                 builder: (context, state) {
-                  final lyricId = state.pathParameters['id'];
+                  final songId = state.pathParameters['id'];
 
                   // Creating a sample song with mock data
                   // In a production app, you would fetch this from an API or database
-                  return LyricDetailsPage(
-                    song: Song(
-                      id: int.parse(lyricId ?? '1'),
-                      title: 'Amazing Grace',
-                      slug: 'amazing-grace',
-                      createdAt: DateTime.now().subtract(
-                        const Duration(days: 100),
-                      ),
-                      updatedAt: DateTime.now(),
-                    ),
-                  );
+                  return LyricDetailsPage(songId: int.parse(songId!));
                 },
               ),
             ],

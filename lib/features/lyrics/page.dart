@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tononkira_mobile/data/database_helper.dart';
 import 'package:tononkira_mobile/models/models.dart';
+import 'package:tononkira_mobile/shared/loader.dart';
 
 /// A beautiful lyrics tab screen displaying all available lyrics with filtering options
 class LyricsTab extends StatefulWidget {
@@ -223,7 +224,7 @@ class _LyricsTabState extends State<LyricsTab> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(child: CircularProgressIndicator());
+    return Center(child: Loader(width: 150));
   }
 
   Widget _buildAppBar(BuildContext context) {
@@ -429,11 +430,7 @@ class _LyricsTabState extends State<LyricsTab> {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 16.0),
       child: Center(
-        child: SizedBox(
-          height: 30,
-          width: 30,
-          child: CircularProgressIndicator(strokeWidth: 3),
-        ),
+        child: SizedBox(height: 30, width: 30, child: Loader(width: 80)),
       ),
     );
   }

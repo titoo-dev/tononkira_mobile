@@ -1,21 +1,31 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tononkira_mobile/models/models.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:tononkira_mobile/data/database_helper.dart';
+import 'package:tononkira_mobile/models/lyrics_analysis.dart';
+import 'package:tononkira_mobile/models/models.dart';
 
 /// A beautifully designed lyric details page showing song lyrics with artist information
 /// following Material 3 design principles
 class LyricDetailsPage extends StatefulWidget {
   /// The song to display details for
-  final Song song;
+  final int songId;
 
-  const LyricDetailsPage({super.key, required this.song});
+  const LyricDetailsPage({super.key, required this.songId});
 
   @override
   State<LyricDetailsPage> createState() => _LyricDetailsPageState();
+}
+
+// Extension to add capitalize method to String
+extension StringExtension on String {
+  String capitalize() {
+    return isNotEmpty ? '${this[0].toUpperCase()}${substring(1)}' : this;
+  }
 }
 
 class _LyricDetailsPageState extends State<LyricDetailsPage>
@@ -30,24 +40,12 @@ class _LyricDetailsPageState extends State<LyricDetailsPage>
   late AnimationController _likeAnimationController;
   // State for liked status
   bool _isLiked = false;
-
-  // Sample lyric content for preview
-  final String _sampleLyric = '''
-Fitia tsy miova
-Fitia mandrakizay
-Izay rehetra anananareo
-Dia avy aminao
-
-Manantena anao
-Mandrakizay
-Fitia tsy miova
-Mandrakizay o...
-
-Ho tano ny tananao izahay
-Ho sotra ny fitiavanao izahay
-Ho sambatra aminao izahay
-Hiaraka aminao mandrakizay
-  ''';
+  // Song data
+  Song? _song;
+  // Lyric content
+  LyricsAnalysis? _lyricContent;
+  // Loading state
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -59,6 +57,56 @@ Hiaraka aminao mandrakizay
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+
+    _loadSongData();
+  }
+
+  Future<void> _loadSongData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final db = await DatabaseHelper.instance.database;
+
+      // Get song data
+      final songData = await db.query(
+        DatabaseHelper.kDbSongTableName,
+        where: 'id = ?',
+        whereArgs: [widget.songId],
+      );
+
+      if (songData.isNotEmpty) {
+        // Transform song data with artists
+        final songs = await DatabaseHelper.instance.transformSongsData(
+          songData,
+        );
+
+        if (songs.isNotEmpty) {
+          _song = songs.first;
+
+          // Get lyric data using the lyricId from the song
+          final lyricData = await db.query(
+            DatabaseHelper.kDbLyricTableName,
+            where: 'id = ?',
+            whereArgs: [songData.first['lyricId']],
+          );
+
+          if (lyricData.isNotEmpty) {
+            final Map<String, dynamic> jsonData = json.decode(
+              lyricData.first['content'] as String,
+            );
+            _lyricContent = LyricsAnalysis.fromJson(jsonData);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading song data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   // Show/hide FAB based on scroll position
@@ -82,6 +130,48 @@ Hiaraka aminao mandrakizay
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Loading...'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_song == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Song Not Found'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.music_off, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'Song with ID ${widget.songId} not found',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              TextButton(
+                onPressed: () => context.pop(),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -116,7 +206,7 @@ Hiaraka aminao mandrakizay
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: colorScheme.primaryContainer.withValues(alpha: 0.8),
+            color: colorScheme.primaryContainer.withOpacity(0.8),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -129,7 +219,7 @@ Hiaraka aminao mandrakizay
       ),
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
-          widget.song.title,
+          _song!.title,
           style: textTheme.titleLarge?.copyWith(
             color: colorScheme.onSurface,
             fontWeight: FontWeight.bold,
@@ -164,9 +254,11 @@ Hiaraka aminao mandrakizay
         // Artist cover or placeholder
         ArtistCover(
           artistName:
-              widget.song.artists.isNotEmpty
-                  ? widget.song.artists.first.name
+              _song!.artists.isNotEmpty
+                  ? _song!.artists.first.name
                   : 'Unknown Artist',
+          imageUrl:
+              _song!.artists.isNotEmpty ? _song!.artists.first.imageUrl : null,
         ),
 
         // Gradient overlay for better text readability
@@ -178,8 +270,8 @@ Hiaraka aminao mandrakizay
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  colorScheme.surface.withValues(alpha: 0.5),
-                  colorScheme.surface.withValues(alpha: 0.7),
+                  colorScheme.surface.withOpacity(0.5),
+                  colorScheme.surface.withOpacity(0.7),
                   colorScheme.surface,
                 ],
                 stops: const [0.0, 0.6, 0.8, 1.0],
@@ -271,9 +363,9 @@ Hiaraka aminao mandrakizay
     final textTheme = Theme.of(context).textTheme;
 
     String artistNames =
-        widget.song.artists.isEmpty
+        _song!.artists.isEmpty
             ? 'Unknown Artist'
-            : widget.song.artists.map((a) => a.name).join(', ');
+            : _song!.artists.map((a) => a.name).join(', ');
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -296,24 +388,11 @@ Hiaraka aminao mandrakizay
             ],
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // View count and date info
           Row(
             children: [
-              Icon(
-                Icons.visibility_outlined,
-                size: 18,
-                color: colorScheme.secondary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${_formatViews(widget.song.views ?? 0)} views',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 16),
               Icon(
                 Icons.calendar_today_outlined,
                 size: 16,
@@ -321,7 +400,7 @@ Hiaraka aminao mandrakizay
               ),
               const SizedBox(width: 8),
               Text(
-                _formatDate(widget.song.createdAt),
+                _formatDate(_song!.createdAt),
                 style: textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -340,17 +419,85 @@ Hiaraka aminao mandrakizay
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-      child: Text(
-        _sampleLyric,
-        style: textTheme.bodyLarge?.copyWith(
-          fontSize: _fontSize,
-          height: 1.8,
-          color: colorScheme.onSurface,
+    if (_lyricContent == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.lyrics_outlined,
+                size: 48,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Lyrics not available for this song',
+                style: textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final section in _lyricContent!.content)
+            _buildLyricsSection(section, context),
+        ],
       ),
+    );
+  }
+
+  Widget _buildLyricsSection(LyricsSection section, BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    // Format section title properly
+    String title = section.type.capitalize();
+    if (section.verseNumber != null) {
+      title = '$title ${section.verseNumber}';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header (Verse, Chorus, etc.)
+        // Padding(
+        //   padding: const EdgeInsets.only(top: 16, bottom: 8),
+        //   child: Text(
+        //     title,
+        //     style: textTheme.titleMedium?.copyWith(
+        //       color: colorScheme.tertiary,
+        //       fontWeight: FontWeight.w600,
+        //     ),
+        //   ),
+        // ),
+
+        // Section content (actual lyrics)
+        ...section.content.map(
+          (line) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              line,
+              style: textTheme.bodyLarge?.copyWith(
+                fontSize: _fontSize,
+                height: 1.5,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+      ],
     );
   }
 
@@ -413,14 +560,14 @@ Hiaraka aminao mandrakizay
   // Share lyrics content
   void _shareContent() {
     Share.share(
-      '${widget.song.title} by ${widget.song.artists.map((a) => a.name).join(', ')}\n\n$_sampleLyric',
+      '${_song!.title} by ${_song!.artists.map((a) => a.name).join(', ')}\n\n$_lyricContent',
       subject: 'Check out these lyrics from Tononkira',
     );
   }
 
   // Copy lyrics to clipboard
   void _copyLyricsToClipboard() {
-    Clipboard.setData(ClipboardData(text: _sampleLyric));
+    Clipboard.setData(ClipboardData(text: _lyricContent.toString()));
 
     // Show confirmation
     ScaffoldMessenger.of(context).showSnackBar(
@@ -480,17 +627,6 @@ Hiaraka aminao mandrakizay
             ],
           ),
     );
-  }
-
-  // Format view count
-  String _formatViews(int views) {
-    if (views >= 1000000) {
-      return '${(views / 1000000).toStringAsFixed(1)}M';
-    } else if (views >= 1000) {
-      return '${(views / 1000).toStringAsFixed(1)}K';
-    } else {
-      return views.toString();
-    }
   }
 
   // Format date
@@ -560,10 +696,7 @@ class ArtistCover extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.black.withValues(alpha: 0.3),
-                  Colors.transparent,
-                ],
+                colors: [Colors.black.withOpacity(0.3), Colors.transparent],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -581,7 +714,7 @@ class ArtistCover extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [containerColor, containerColor.withValues(alpha: 0.7)],
+          colors: [containerColor, containerColor.withOpacity(0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -592,7 +725,7 @@ class ArtistCover extends StatelessWidget {
           // Wave pattern decoration
           CustomPaint(
             painter: WavePatternPainter(
-              color: primaryColor.withValues(alpha: 0.3),
+              color: primaryColor.withOpacity(0.3),
               waveCount: 5,
             ),
           ),
@@ -606,13 +739,13 @@ class ArtistCover extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 72,
                         fontWeight: FontWeight.bold,
-                        color: primaryColor.withValues(alpha: 0.5),
+                        color: primaryColor.withOpacity(0.5),
                       ),
                     )
                     : Icon(
                       Icons.music_note_rounded,
                       size: 72,
-                      color: primaryColor.withValues(alpha: 0.5),
+                      color: primaryColor.withOpacity(0.5),
                     ),
           ),
         ],

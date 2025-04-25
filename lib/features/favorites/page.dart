@@ -4,6 +4,7 @@ import 'package:tononkira_mobile/features/favorites/widgets/favorite_card.dart';
 import 'package:tononkira_mobile/features/favorites/widgets/favorites_filter_bottom_sheet.dart';
 import 'package:tononkira_mobile/models/models.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tononkira_mobile/shared/loader.dart';
 
 /// A beautiful favorites page that displays user's liked lyrics in a modern layout
 /// following latest Material 3 design trends
@@ -237,11 +238,7 @@ class _FavoritesTabState extends State<FavoritesTab>
             Expanded(
               child:
                   _isLoading
-                      ? Center(
-                        child: CircularProgressIndicator(
-                          color: colorScheme.primary,
-                        ),
-                      )
+                      ? Center(child: Loader(width: 150))
                       : filteredFavorites.isEmpty
                       ? _buildEmptyState(context)
                       : _buildLyricsList(filteredFavorites),
