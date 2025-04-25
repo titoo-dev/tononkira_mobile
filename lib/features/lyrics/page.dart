@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
@@ -23,6 +24,12 @@ class _LyricsTabState extends State<LyricsTab> {
   SortOption _sortOption = SortOption.title;
   String _searchQuery = '';
 
+  // Search state
+  bool _isSearching = false;
+  List<Song> _searchResults = [];
+  Timer? _debounce;
+  final FocusNode _searchFocusNode = FocusNode();
+
   // Songs data
   List<Song> _songs = [];
   bool _isLoading = true;
@@ -37,6 +44,73 @@ class _LyricsTabState extends State<LyricsTab> {
     super.initState();
     _loadSongs();
     _scrollController.addListener(_scrollListener);
+    _searchController.addListener(_onSearchChanged);
+    _searchFocusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (_searchFocusNode.hasFocus) {
+      setState(() {
+        _isSearching = true;
+        _showSearchBar = true;
+      });
+    }
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (_searchController.text.length >= 2) {
+        _performSearch(_searchController.text);
+      } else if (_searchController.text.isEmpty) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = _searchFocusNode.hasFocus;
+          // Reset to normal song list when search is cleared
+          _searchQuery = '';
+        });
+      }
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() {
+      _isSearching = true;
+      _searchQuery = query;
+    });
+
+    final db = await DatabaseHelper.instance.database;
+
+    try {
+      // Complex query that searches across songs, artists and lyrics
+      final results = await db.rawQuery(
+        '''
+        SELECT DISTINCT s.id, s.title, s.slug, s.views, s.createdAt, s.updatedAt 
+        FROM Song s
+        LEFT JOIN _ArtistToSong ats ON s.id = ats.B
+        LEFT JOIN Artist a ON a.id = ats.A
+        LEFT JOIN Lyric l ON l.id = s.lyricId
+        WHERE 
+          s.title LIKE ? OR 
+          a.name LIKE ? OR 
+          (l.content LIKE ? OR l.contentText LIKE ?)
+        LIMIT 100
+      ''',
+        ['%$query%', '%$query%', '%$query%', '%$query%'],
+      );
+
+      // Transform raw data to Song objects
+      final songs = await DatabaseHelper.instance.transformSongsData(results);
+
+      setState(() {
+        _searchResults = songs;
+      });
+    } catch (e) {
+      dev.log('Search error: $e');
+      setState(() {
+        _searchResults = [];
+      });
+    }
   }
 
   void _scrollListener() {
@@ -152,11 +226,18 @@ class _LyricsTabState extends State<LyricsTab> {
     _searchController.dispose();
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _debounce?.cancel();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
   // Filter and sort songs based on current settings
   List<Song> _getFilteredAndSortedSongs() {
+    // If we're searching and have search results, return those
+    if (_isSearching && _searchResults.isNotEmpty) {
+      return _searchResults;
+    }
+
     if (_songs.isEmpty) return [];
 
     List<Song> filteredSongs = List<Song>.from(_songs);
@@ -166,8 +247,8 @@ class _LyricsTabState extends State<LyricsTab> {
       return filteredSongs; // Already sorted in the query
     }
 
-    // Apply search if needed
-    if (_searchQuery.isNotEmpty) {
+    // Apply search if needed (basic in-memory search)
+    if (_searchQuery.isNotEmpty && !_isSearching) {
       filteredSongs =
           filteredSongs.where((song) {
             return song.title.toLowerCase().contains(
@@ -208,13 +289,15 @@ class _LyricsTabState extends State<LyricsTab> {
             // Custom app bar with animations
             _buildAppBar(context),
 
-            // Main songs list
+            // Main content - either search results or normal song list
             Expanded(
               child:
                   _isLoading
                       ? _buildLoadingState()
                       : filteredSongs.isEmpty
                       ? _buildEmptyState(context)
+                      : _isSearching && _searchResults.isNotEmpty
+                      ? _buildSearchResultsList(filteredSongs)
                       : _buildSongsList(filteredSongs),
             ),
           ],
@@ -275,6 +358,8 @@ class _LyricsTabState extends State<LyricsTab> {
                       if (!_showSearchBar) {
                         _searchController.clear();
                         _searchQuery = '';
+                        _isSearching = false;
+                        _searchResults.clear();
                       }
                     });
                   },
@@ -296,17 +381,61 @@ class _LyricsTabState extends State<LyricsTab> {
                 _showSearchBar
                     ? Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: SearchBar(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                      ),
+                      child: _buildPowerSearchBar(),
                     )
                     : const SizedBox.shrink(),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPowerSearchBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              decoration: InputDecoration(
+                hintText: 'Search for lyrics, artists, content...',
+                border: InputBorder.none,
+                hintStyle: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ),
+          if (_searchController.text.isNotEmpty)
+            IconButton(
+              icon: Icon(Icons.close, color: colorScheme.primary),
+              onPressed: () {
+                setState(() {
+                  _searchController.clear();
+                  _searchQuery = '';
+                  _isSearching = false;
+                  _searchResults.clear();
+                });
+              },
+              tooltip: 'Clear search',
+            )
+          else
+            IconButton(
+              icon: Icon(Icons.mic, color: colorScheme.primary),
+              onPressed: () {},
+              tooltip: 'Voice search',
+            ),
         ],
       ),
     );
@@ -373,24 +502,34 @@ class _LyricsTabState extends State<LyricsTab> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    final message =
+        _isSearching
+            ? 'No results found for "${_searchController.text}"'
+            : 'No lyrics found';
+
+    final subMessage =
+        _isSearching
+            ? 'Try different search terms or filters'
+            : 'Try changing your filter or search terms';
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.music_note_outlined,
+            _isSearching ? Icons.search_off : Icons.music_note_outlined,
             size: 80,
             color: colorScheme.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
-            'No lyrics found',
+            message,
             style: textTheme.titleLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'Try changing your filter or search terms',
+            subMessage,
             style: textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -423,6 +562,114 @@ class _LyricsTabState extends State<LyricsTab> {
               ),
         );
       },
+    );
+  }
+
+  Widget _buildSearchResultsList(List<Song> searchResults) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      itemCount: searchResults.length,
+      itemBuilder: (context, index) {
+        final song = searchResults[index];
+        // Enhanced search result item with highlighting
+        return _buildSearchResultItem(song, index);
+      },
+    );
+  }
+
+  Widget _buildSearchResultItem(Song song, int index) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Staggered animation for search results
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      transform: Matrix4.translationValues(0, 0, 0),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child:
+                song.artists.isNotEmpty && song.artists.first.imageUrl != null
+                    ? Image.network(
+                      song.artists.first.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: colorScheme.primaryContainer,
+                          child: Center(
+                            child: Text(
+                              song.artists.first.name
+                                  .substring(0, 1)
+                                  .toUpperCase(),
+                              style: TextStyle(
+                                color: colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 24,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                    : Container(
+                      color: colorScheme.primaryContainer,
+                      child: Center(
+                        child: Text(
+                          song.artists.isNotEmpty
+                              ? song.artists.first.name
+                                  .substring(0, 1)
+                                  .toUpperCase()
+                              : "U",
+                          style: TextStyle(
+                            color: colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+          ),
+        ),
+        title: Text(
+          song.title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        subtitle:
+            song.artists.isNotEmpty
+                ? Text(
+                  song.artists.first.name,
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                )
+                : null,
+        trailing: IconButton(
+          icon: Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          onPressed: () => _navigateToLyricDetails(song),
+        ),
+        onTap: () => _navigateToLyricDetails(song),
+      ),
+    );
+  }
+
+  void _navigateToLyricDetails(Song song) {
+    context.pushNamed(
+      'lyricDetails',
+      pathParameters: {'id': song.id.toString()},
     );
   }
 
