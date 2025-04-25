@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tononkira_mobile/data/database_helper.dart';
 import 'package:tononkira_mobile/features/home/widgets/featured_song_card.dart';
 import 'package:tononkira_mobile/features/home/widgets/highlighted_text.dart';
@@ -93,7 +94,7 @@ class _SearchBarState extends State<SearchBar> {
   }
 
   void _onFocusChanged() {
-    if (!_focusNode.hasFocus) {
+    if (_focusNode.hasFocus) {
       setState(() {
         _isSearching = true;
       });
@@ -451,7 +452,10 @@ class _SearchResultItemState extends State<SearchResultItem>
             title: HighlightedText(
               text: widget.song.title,
               highlight: widget.highlightText,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurfaceVariant,
+              ),
               highlightStyle: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: colorScheme.primary,
@@ -480,14 +484,19 @@ class _SearchResultItemState extends State<SearchResultItem>
                 size: 16,
                 color: colorScheme.onSurfaceVariant,
               ),
-              onPressed: () {},
+              onPressed: _onTap,
             ),
-            onTap: () {
-              // Navigate to song details page
-            },
+            onTap: _onTap,
           ),
         ),
       ),
+    );
+  }
+
+  void _onTap() {
+    context.pushNamed(
+      'lyricDetails',
+      pathParameters: {'id': widget.song.id.toString()},
     );
   }
 }
