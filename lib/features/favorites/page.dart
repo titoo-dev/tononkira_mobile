@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tononkira_mobile/data/database_helper.dart';
 import 'package:tononkira_mobile/models/models.dart';
 import 'package:go_router/go_router.dart';
 
@@ -21,7 +22,7 @@ class _FavoritesTabState extends State<FavoritesTab>
   bool _isLoading = true;
   late AnimationController _animationController;
 
-  // Sample data for demonstration - would be fetched from backend in production
+  // List to store favorite songs
   List<Song> _favoriteSongs = [];
 
   @override
@@ -33,116 +34,56 @@ class _FavoritesTabState extends State<FavoritesTab>
       duration: const Duration(milliseconds: 800),
     );
 
-    // Simulate loading data
+    // Load favorites from database
     _loadFavorites();
   }
 
-  // Simulate loading favorites from a data source
+  // Load favorites from database
   Future<void> _loadFavorites() async {
-    // In production, this would be a real API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final db = await DatabaseHelper.instance.database;
 
-    // Sample data
-    final sampleFavorites = [
-      Song(
-        id: 1,
-        title: "Veloma",
-        slug: "veloma",
-        views: 1245,
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        updatedAt: DateTime.now(),
-        artists: [
-          Artist(
-            id: 1,
-            name: "Mahaleo",
-            slug: "mahaleo",
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            imageUrl:
-                'https://www.nocomment.mg/storage/app/public/articles/NC163/cultures/CHpuKxfe3d9c40b974a81858a8fe1ee1a3a9e1.webp',
-          ),
-        ],
-      ),
-      Song(
-        id: 2,
-        title: "Tsara ny tanantsika",
-        slug: "tsara-ny-tanantsika",
-        views: 982,
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-        updatedAt: DateTime.now(),
-        artists: [
-          Artist(
-            id: 2,
-            name: "Ambondrona",
-            slug: "ambondrona",
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            imageUrl:
-                'https://yt3.googleusercontent.com/ktckEASBqHYs--hLsycAhxTz-7ihykMxDvMN-CnJygTgVSUf-mNZUpSUhzqilkS02Wcavl-C=s900-c-k-c0x00ffffff-no-rj',
-          ),
-        ],
-      ),
-      Song(
-        id: 3,
-        title: "Mozika malaza",
-        slug: "mozika-malaza",
-        views: 784,
-        createdAt: DateTime.now().subtract(const Duration(days: 15)),
-        updatedAt: DateTime.now(),
-        artists: [
-          Artist(
-            id: 3,
-            name: "Ny Ainga",
-            slug: "ny-ainga",
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            imageUrl:
-                'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpPM-JypQLj_0iGGMkAAToFmKgEwFZH_9Yy75fDdyVlaZs5eZVDFoG6S3IpF8TCWrBrdY&usqp=CAU',
-          ),
-        ],
-      ),
-      Song(
-        id: 4,
-        title: "Hira faneva",
-        slug: "hira-faneva",
-        views: 621,
-        createdAt: DateTime.now().subtract(const Duration(days: 7)),
-        updatedAt: DateTime.now(),
-        artists: [
-          Artist(
-            id: 4,
-            name: "Tarika Ramaroson",
-            slug: "tarika-ramaroson",
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        ],
-      ),
-      Song(
-        id: 5,
-        title: "Fitia tsy miala",
-        slug: "fitia-tsy-miala",
-        views: 845,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        updatedAt: DateTime.now(),
-        artists: [
-          Artist(
-            id: 5,
-            name: "Nanie",
-            slug: "nanie",
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        ],
-      ),
-    ];
+      // Query the favorites table
+      final favorites = await db.query('Favorites', orderBy: 'updatedAt DESC');
 
-    if (mounted) {
-      setState(() {
-        _favoriteSongs = sampleFavorites;
-        _isLoading = false;
-      });
-      _animationController.forward();
+      if (favorites.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _favoriteSongs = [];
+            _isLoading = false;
+          });
+          _animationController.forward();
+        }
+        return;
+      }
+
+      // Get all the song IDs from favorites
+      final songIds = favorites.map((fav) => fav['songId'] as int).toList();
+
+      // Query songs with these IDs
+      final songsData = await db.query(
+        'Song',
+        where: 'id IN (${List.filled(songIds.length, '?').join(', ')})',
+        whereArgs: songIds,
+      );
+
+      // Transform songs data to include artists
+      final songs = await DatabaseHelper.instance.transformSongsData(songsData);
+
+      if (mounted) {
+        setState(() {
+          _favoriteSongs = songs;
+          _isLoading = false;
+        });
+        _animationController.forward();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      debugPrint('Error loading favorites: $e');
     }
   }
 
@@ -188,28 +129,46 @@ class _FavoritesTabState extends State<FavoritesTab>
     return filteredSongs;
   }
 
-  void _removeFavorite(Song song) {
+  Future<void> _removeFavorite(Song song) async {
+    // Remove from UI immediately for better UX
     setState(() {
       _favoriteSongs.removeWhere((s) => s.id == song.id);
     });
 
-    // Show a snackbar with undo option
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed "${song.title}" from favorites'),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            setState(() {
-              _favoriteSongs.add(song);
-            });
-          },
-        ),
-        behavior: SnackBarBehavior.floating,
-        width: MediaQuery.of(context).size.width * 0.9,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    try {
+      // Remove from database
+      final db = await DatabaseHelper.instance.database;
+      await db.delete('Favorites', where: 'songId = ?', whereArgs: [song.id]);
+
+      // Show a snackbar with undo option
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Removed "${song.title}" from favorites'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                // Add back to favorites in the database
+                await db.insert('Favorites', {
+                  'songId': song.id,
+                  'updatedAt': DateTime.now().toIso8601String(),
+                });
+
+                // Reload favorites to refresh the list
+                _loadFavorites();
+              },
+            ),
+            behavior: SnackBarBehavior.floating,
+            width: MediaQuery.of(context).size.width * 0.9,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error removing favorite: $e');
+    }
   }
 
   void _showFilterBottomSheet(BuildContext context) {
