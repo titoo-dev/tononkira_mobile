@@ -325,7 +325,7 @@ class _LyricsTabState extends State<LyricsTab> {
           Icon(
             Icons.music_note_outlined,
             size: 80,
-            color: colorScheme.primary.withOpacity(0.5),
+            color: colorScheme.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -337,7 +337,7 @@ class _LyricsTabState extends State<LyricsTab> {
           Text(
             'Try changing your filter or search terms',
             style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -456,8 +456,8 @@ class SearchBar extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-          color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Row(
@@ -472,7 +472,7 @@ class SearchBar extends StatelessWidget {
                   hintText: 'Search for songs or artists...',
                   border: InputBorder.none,
                   hintStyle: TextStyle(
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -522,7 +522,7 @@ class SongListTile extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       colorScheme.primaryContainer,
-                      colorScheme.primary.withOpacity(0.5),
+                      colorScheme.primary.withValues(alpha: 0.5),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -662,7 +662,7 @@ class FilterBottomSheet extends StatelessWidget {
             height: 4,
             width: 40,
             decoration: BoxDecoration(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -856,7 +856,7 @@ class FilterBottomSheet extends StatelessWidget {
                 icon,
                 color:
                     isDisabled
-                        ? colorScheme.onSurface.withOpacity(0.38)
+                        ? colorScheme.onSurface.withValues(alpha: 0.38)
                         : isSelected
                         ? colorScheme.onPrimaryContainer
                         : colorScheme.onSurface,
@@ -868,7 +868,7 @@ class FilterBottomSheet extends StatelessWidget {
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color:
                       isDisabled
-                          ? colorScheme.onSurface.withOpacity(0.38)
+                          ? colorScheme.onSurface.withValues(alpha: 0.38)
                           : isSelected
                           ? colorScheme.onPrimaryContainer
                           : colorScheme.onSurface,
@@ -909,7 +909,7 @@ class FilterBottomSheet extends StatelessWidget {
                 icon,
                 color:
                     isDisabled
-                        ? colorScheme.onSurface.withOpacity(0.38)
+                        ? colorScheme.onSurface.withValues(alpha: 0.38)
                         : isSelected
                         ? colorScheme.onPrimaryContainer
                         : colorScheme.onSurface,
@@ -921,7 +921,7 @@ class FilterBottomSheet extends StatelessWidget {
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color:
                       isDisabled
-                          ? colorScheme.onSurface.withOpacity(0.38)
+                          ? colorScheme.onSurface.withValues(alpha: 0.38)
                           : isSelected
                           ? colorScheme.onPrimaryContainer
                           : colorScheme.onSurface,

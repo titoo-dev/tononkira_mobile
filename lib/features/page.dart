@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tononkira_mobile/features/home/page.dart';
 
 class MainScreen extends StatefulWidget {
   final Widget child;
@@ -58,6 +57,47 @@ class _MainScreenState extends State<MainScreen> {
           }
         },
       ),
+    );
+  }
+}
+
+class MainBottomNavigationBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const MainBottomNavigationBar({
+    super.key,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return NavigationBar(
+      labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+      backgroundColor: colorScheme.surface,
+      indicatorColor: colorScheme.secondaryContainer,
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onDestinationSelected,
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
+          label: 'Home',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.music_note_outlined),
+          selectedIcon: Icon(Icons.music_note),
+          label: 'Lyrics',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.favorite_outline),
+          selectedIcon: Icon(Icons.favorite),
+          label: 'Favorites',
+        ),
+      ],
     );
   }
 }

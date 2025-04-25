@@ -447,7 +447,7 @@ class _FavoritesTabState extends State<FavoritesTab>
             width: 150,
             height: 150,
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(75),
             ),
             child: Stack(
@@ -456,7 +456,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                 Icon(
                   Icons.menu_book_outlined,
                   size: 70,
-                  color: colorScheme.primary.withOpacity(0.7),
+                  color: colorScheme.primary.withValues(alpha: 0.7),
                 ),
                 Positioned(
                   bottom: 35,
@@ -570,7 +570,7 @@ class SearchBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         color:
             Theme.of(context).brightness == Brightness.light
-                ? colorScheme.surfaceContainerHighest.withOpacity(0.7)
+                ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.7)
                 : colorScheme.surfaceContainerHighest,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -586,7 +586,7 @@ class SearchBar extends StatelessWidget {
                 hintText: 'Search lyrics...',
                 border: InputBorder.none,
                 hintStyle: TextStyle(
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
               ),
             ),
@@ -635,7 +635,7 @@ class FavoriteLyricCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outlineVariant.withOpacity(0.3),
+          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -724,8 +724,8 @@ class FavoriteLyricCard extends StatelessWidget {
                             Icon(
                               Icons.remove_red_eye_outlined,
                               size: 14,
-                              color: colorScheme.onSurfaceVariant.withOpacity(
-                                0.7,
+                              color: colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.7,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -747,8 +747,8 @@ class FavoriteLyricCard extends StatelessWidget {
                             Icon(
                               Icons.calendar_today_outlined,
                               size: 14,
-                              color: colorScheme.onSurfaceVariant.withOpacity(
-                                0.7,
+                              color: colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.7,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -780,8 +780,8 @@ class FavoriteLyricCard extends StatelessWidget {
                     ),
                     tooltip: 'Remove from favorites',
                     style: IconButton.styleFrom(
-                      backgroundColor: colorScheme.primaryContainer.withOpacity(
-                        0.4,
+                      backgroundColor: colorScheme.primaryContainer.withValues(
+                        alpha: 0.4,
                       ),
                     ),
                   ),
@@ -950,7 +950,7 @@ class FavoritesFilterBottomSheet extends StatelessWidget {
             height: 4,
             width: 40,
             decoration: BoxDecoration(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(4),
             ),
           ),

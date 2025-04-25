@@ -116,7 +116,7 @@ Hiaraka aminao mandrakizay
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: colorScheme.primaryContainer.withOpacity(0.8),
+            color: colorScheme.primaryContainer.withValues(alpha: 0.8),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -178,8 +178,8 @@ Hiaraka aminao mandrakizay
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  colorScheme.surface.withOpacity(0.5),
-                  colorScheme.surface.withOpacity(0.7),
+                  colorScheme.surface.withValues(alpha: 0.5),
+                  colorScheme.surface.withValues(alpha: 0.7),
                   colorScheme.surface,
                 ],
                 stops: const [0.0, 0.6, 0.8, 1.0],
@@ -560,7 +560,10 @@ class ArtistCover extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.black.withOpacity(0.3), Colors.transparent],
+                colors: [
+                  Colors.black.withValues(alpha: 0.3),
+                  Colors.transparent,
+                ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -578,7 +581,7 @@ class ArtistCover extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [containerColor, containerColor.withOpacity(0.7)],
+          colors: [containerColor, containerColor.withValues(alpha: 0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -589,7 +592,7 @@ class ArtistCover extends StatelessWidget {
           // Wave pattern decoration
           CustomPaint(
             painter: WavePatternPainter(
-              color: primaryColor.withOpacity(0.3),
+              color: primaryColor.withValues(alpha: 0.3),
               waveCount: 5,
             ),
           ),
@@ -603,13 +606,13 @@ class ArtistCover extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 72,
                         fontWeight: FontWeight.bold,
-                        color: primaryColor.withOpacity(0.5),
+                        color: primaryColor.withValues(alpha: 0.5),
                       ),
                     )
                     : Icon(
                       Icons.music_note_rounded,
                       size: 72,
-                      color: primaryColor.withOpacity(0.5),
+                      color: primaryColor.withValues(alpha: 0.5),
                     ),
           ),
         ],

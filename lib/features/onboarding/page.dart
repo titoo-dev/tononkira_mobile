@@ -143,7 +143,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     count: _onboardingItems.length,
                     effect: ExpandingDotsEffect(
                       activeDotColor: colorScheme.primary,
-                      dotColor: colorScheme.primary.withOpacity(0.2),
+                      dotColor: colorScheme.primary.withValues(alpha: 0.2),
                       dotHeight: 8,
                       dotWidth: 8,
                       expansionFactor: 3,
@@ -222,7 +222,7 @@ class OnboardingPageContent extends StatelessWidget {
                   // Dynamic background patterns
                   Positioned.fill(
                     child: OnboardingBackgroundPattern(
-                      color: colorScheme.primary.withOpacity(0.05),
+                      color: colorScheme.primary.withValues(alpha: 0.05),
                     ),
                   ),
 
@@ -278,7 +278,7 @@ class OnboardingPageContent extends StatelessWidget {
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.1),
+        color: colorScheme.primary.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(item.iconData, size: 60, color: colorScheme.primary),
