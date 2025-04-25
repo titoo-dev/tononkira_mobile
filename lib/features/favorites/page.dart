@@ -20,8 +20,6 @@ class _FavoritesTabState extends State<FavoritesTab>
   // Filter options
   String _currentFilter = 'Recent';
   final TextEditingController _searchController = TextEditingController();
-  bool _showSearchBar = false;
-  String _searchQuery = '';
   bool _isLoading = true;
   late AnimationController _animationController;
 
@@ -93,21 +91,6 @@ class _FavoritesTabState extends State<FavoritesTab>
   // Filter and sort favorites based on current settings
   List<Song> _getFilteredAndSortedFavorites() {
     List<Song> filteredSongs = List<Song>.from(_favoriteSongs);
-
-    // Apply search if needed
-    if (_searchQuery.isNotEmpty) {
-      filteredSongs =
-          filteredSongs.where((song) {
-            return song.title.toLowerCase().contains(
-                  _searchQuery.toLowerCase(),
-                ) ||
-                song.artists.any(
-                  (artist) => artist.name.toLowerCase().contains(
-                    _searchQuery.toLowerCase(),
-                  ),
-                );
-          }).toList();
-    }
 
     // Apply sorting
     switch (_currentFilter) {
@@ -255,7 +238,7 @@ class _FavoritesTabState extends State<FavoritesTab>
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      height: _showSearchBar ? 142 : 72,
+      height: 60,
       child: Column(
         children: [
           // Title row with actions
@@ -284,23 +267,6 @@ class _FavoritesTabState extends State<FavoritesTab>
 
                 // Current filter/sort indicator chip
                 _buildFilterChip(context),
-
-                // Search button
-                IconButton(
-                  icon: Icon(
-                    _showSearchBar ? Icons.close : Icons.search,
-                    color: colorScheme.primary,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _showSearchBar = !_showSearchBar;
-                      if (!_showSearchBar) {
-                        _searchController.clear();
-                        _searchQuery = '';
-                      }
-                    });
-                  },
-                ),
               ],
             ),
           ),
@@ -314,20 +280,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                 child: FadeTransition(opacity: animation, child: child),
               );
             },
-            child:
-                _showSearchBar
-                    ? Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: SearchBar(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                      ),
-                    )
-                    : const SizedBox.shrink(),
+            child: const SizedBox.shrink(),
           ),
         ],
       ),

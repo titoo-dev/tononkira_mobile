@@ -107,57 +107,6 @@ class FavoriteLyricCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-
-                    const SizedBox(height: 8),
-
-                    // Stats row
-                    Row(
-                      children: [
-                        // View count
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.remove_red_eye_outlined,
-                              size: 14,
-                              color: colorScheme.onSurfaceVariant.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatViews(song.views ?? 0),
-                              style: textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(width: 16),
-
-                        // Added date
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              size: 14,
-                              color: colorScheme.onSurfaceVariant.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatDate(song.createdAt),
-                              style: textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -181,104 +130,11 @@ class FavoriteLyricCard extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // Quick actions menu
-                  IconButton(
-                    onPressed: () {
-                      _showQuickActionsMenu(context);
-                    },
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: colorScheme.onSurfaceVariant,
-                      size: 22,
-                    ),
-                    tooltip: 'More options',
-                  ),
                 ],
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // Format view count for display (e.g., 1.2K, 3.5M)
-  String _formatViews(int views) {
-    if (views >= 1000000) {
-      return '${(views / 1000000).toStringAsFixed(1)}M';
-    } else if (views >= 1000) {
-      return '${(views / 1000).toStringAsFixed(1)}K';
-    } else {
-      return views.toString();
-    }
-  }
-
-  // Format date in a readable format
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inDays < 30) {
-      final weeks = (difference.inDays / 7).floor();
-      return '$weeks ${weeks == 1 ? 'week' : 'weeks'} ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-
-  // Show quick actions menu for the lyric
-  void _showQuickActionsMenu(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colorScheme.surface,
-      builder:
-          (context) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: Icon(Icons.share, color: colorScheme.primary),
-                  title: const Text('Share lyrics'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Implement sharing functionality
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.download_outlined,
-                    color: colorScheme.primary,
-                  ),
-                  title: const Text('Download for offline'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Implement download functionality
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.edit_note, color: colorScheme.primary),
-                  title: const Text('Add to collection'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Implement collection functionality
-                  },
-                ),
-              ],
-            ),
-          ),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
     );
   }
