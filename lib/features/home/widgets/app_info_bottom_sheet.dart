@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:line_icons/line_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Beautiful bottom sheet showing app information and developer contacts
 class AppInfoBottomSheet extends StatelessWidget {
@@ -142,26 +144,26 @@ class AppInfoBottomSheet extends StatelessWidget {
             children: [
               // LinkedIn
               _ContactButton(
-                icon: Icons.person_outline_rounded,
+                icon: LineIcons.linkedinIn,
                 label: 'LinkedIn',
                 color: const Color(0xFF0077B5),
-                onTap: () {},
+                onTap: () => openLinkedIn(context),
               ),
 
               // GitHub
               _ContactButton(
-                icon: Icons.code_rounded,
+                icon: LineIcons.github,
                 label: 'GitHub',
                 color: const Color(0xFF333333),
-                onTap: () {},
+                onTap: () => openGitHub(context),
               ),
 
               // Email
               _ContactButton(
-                icon: Icons.email_outlined,
+                icon: LineIcons.envelope,
                 label: 'Email',
                 color: colorScheme.tertiary,
-                onTap: () {},
+                onTap: () => openEmail(context),
               ),
             ],
           ),
@@ -180,6 +182,47 @@ class AppInfoBottomSheet extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void openLinkedIn(BuildContext context) async {
+    final Uri url = Uri.parse('https://linkedin.com/in/titosy-manankasina');
+    if (!await launchUrl(url)) {
+      if (context.mounted) {
+        // Show error message if the URL cannot be opened
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open LinkedIn profile')),
+        );
+      }
+    }
+  }
+
+  void openGitHub(BuildContext context) async {
+    final Uri url = Uri.parse('https://github.com/titoo-dev');
+    if (!await launchUrl(url)) {
+      if (context.mounted) {
+        // Show error message if the URL cannot be opened
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open GitHub profile')),
+        );
+      }
+    }
+  }
+
+  void openEmail(BuildContext context) async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'dev.titosy@gmail.com',
+      queryParameters: {'subject': 'Regarding Tononkira App'},
+    );
+
+    if (!await launchUrl(emailUri)) {
+      if (context.mounted) {
+        // Show error message if email client cannot be opened
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open email client')),
+        );
+      }
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:line_icons/line_icons.dart';
 
 class MainScreen extends StatefulWidget {
   final Widget child;
@@ -83,18 +84,18 @@ class MainBottomNavigationBar extends StatelessWidget {
       onDestinationSelected: onDestinationSelected,
       destinations: const [
         NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
+          icon: Icon(LineIcons.home),
+          selectedIcon: Icon(LineIcons.home),
           label: 'Home',
         ),
         NavigationDestination(
-          icon: Icon(Icons.music_note_outlined),
-          selectedIcon: Icon(Icons.music_note),
+          icon: Icon(LineIcons.music),
+          selectedIcon: Icon(LineIcons.music),
           label: 'Lyrics',
         ),
         NavigationDestination(
-          icon: Icon(Icons.favorite_outline),
-          selectedIcon: Icon(Icons.favorite),
+          icon: Icon(LineIcons.heart),
+          selectedIcon: Icon(LineIcons.heart),
           label: 'Favorites',
         ),
       ],
