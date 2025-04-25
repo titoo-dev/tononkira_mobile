@@ -22,7 +22,9 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8.0),
-          side: BorderSide(color: _lightColorScheme.outline.withOpacity(0.1)),
+          side: BorderSide(
+            color: _lightColorScheme.outline.withValues(alpha: 0.1),
+          ),
         ),
       ),
 
@@ -36,7 +38,9 @@ class AppTheme {
       // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: _lightColorScheme.surfaceContainerHighest.withOpacity(0.5),
+        fillColor: _lightColorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.5,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
           borderSide: BorderSide(color: _lightColorScheme.outline),
@@ -44,7 +48,7 @@ class AppTheme {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
           borderSide: BorderSide(
-            color: _lightColorScheme.outline.withOpacity(0.5),
+            color: _lightColorScheme.outline.withValues(alpha: 0.5),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -158,7 +162,7 @@ class AppTheme {
     surfaceContainerHighest: _convertFromOklch(0.9686, 0.01, 210), // --muted
     onSurfaceVariant: _convertFromOklch(0.2, 0.02, 210), // --muted-foreground
     outline: _convertFromOklch(0.93, 0.01, 40), // --border
-    outlineVariant: _convertFromOklch(0.93, 0.01, 40).withOpacity(0.5),
+    outlineVariant: _convertFromOklch(0.93, 0.01, 40).withValues(alpha: 0.5),
 
     // Popover colors
     inverseSurface: _convertFromOklch(0.99, 0.03, 40), // --popover

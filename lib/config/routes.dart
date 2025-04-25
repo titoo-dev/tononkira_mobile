@@ -7,7 +7,6 @@ import 'package:tononkira_mobile/features/home/page.dart';
 import 'package:tononkira_mobile/features/lyrics/page.dart';
 import 'package:tononkira_mobile/features/onboarding/page.dart';
 import 'package:tononkira_mobile/features/page.dart';
-import 'package:tononkira_mobile/models/models.dart';
 
 /// Configuration class for application routes
 class AppRoutes {
@@ -50,9 +49,15 @@ class AppRoutes {
 
   /// GoRouter configuration for the application
   static final router = GoRouter(
-    initialLocation: '/onboarding',
+    initialLocation: databaseSync,
     routes: [
       // Onboarding route (shown only first time)
+      GoRoute(
+        path: '/database-sync',
+        name: 'databaseSync',
+        builder: (context, state) => const DatabaseSyncPage(),
+      ),
+
       GoRoute(
         path: '/onboarding',
         name: 'onboarding',
@@ -60,11 +65,6 @@ class AppRoutes {
       ),
 
       // Database sync route (shown during initial setup)
-      GoRoute(
-        path: '/database-sync',
-        name: 'databaseSync',
-        builder: (context, state) => const DatabaseSyncPage(),
-      ),
 
       // Main screen with bottom navigation
       ShellRoute(
@@ -80,21 +80,11 @@ class AppRoutes {
                 path: 'lyric/:id',
                 name: 'lyricDetails',
                 builder: (context, state) {
-                  final lyricId = state.pathParameters['id'];
+                  final songId = state.pathParameters['id'];
 
                   // Creating a sample song with mock data
                   // In a production app, you would fetch this from an API or database
-                  return LyricDetailsPage(
-                    song: Song(
-                      id: int.parse(lyricId ?? '1'),
-                      title: 'Amazing Grace',
-                      slug: 'amazing-grace',
-                      createdAt: DateTime.now().subtract(
-                        const Duration(days: 100),
-                      ),
-                      updatedAt: DateTime.now(),
-                    ),
-                  );
+                  return LyricDetailsPage(songId: int.parse(songId!));
                 },
               ),
             ],
@@ -119,7 +109,7 @@ class AppRoutes {
     // Log routing for debugging purposes
     debugLogDiagnostics: true,
     // Redirect to onboarding on first launch, then to main screen
-    redirect: (BuildContext context, GoRouterState state) {
+    redirect: (BuildContext context, GoRouterState state) async {
       // You can add logic here to check if this is first launch
       // Example:
       // final firstLaunch = PreferencesService.isFirstLaunch();
@@ -127,7 +117,7 @@ class AppRoutes {
 
       // Redirect to main screen if trying to access root
       if (state.path == '/') {
-        return '/onboarding';
+        return databaseSync;
       }
 
       return null;

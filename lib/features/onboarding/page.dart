@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:tononkira_mobile/config/routes.dart';
-import 'package:tononkira_mobile/data/database_helper.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -81,42 +79,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         curve: Curves.easeInOut,
       );
     } else {
-      _checkDatabaseAndNavigate();
-    }
-  }
-
-  // Check database before navigating to home
-  Future<void> _checkDatabaseAndNavigate() async {
-    try {
-      // Check if database exists and has data
-      final db = await DatabaseHelper.instance.database;
-      final artistCount = Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM Artist'),
-      );
-      final songCount = Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM Song'),
-      );
-
-      if (mounted) {
-        // If database is empty or not properly set up, go to sync page
-        if (artistCount == 0 || songCount == 0) {
-          GoRouter.of(context).go(AppRoutes.databaseSync);
-        } else {
-          // Database exists and has data, go to home
-          GoRouter.of(context).go(AppRoutes.home);
-        }
-      }
-    } catch (e) {
-      // If there's an error (like tables don't exist), go to sync page
-      if (mounted) {
-        GoRouter.of(context).go(AppRoutes.databaseSync);
-      }
+      _navigateToHome();
     }
   }
 
   void _navigateToHome() {
-    // Check database before navigating
-    _checkDatabaseAndNavigate();
+    GoRouter.of(context).go(AppRoutes.home);
   }
 
   @override
@@ -175,7 +143,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     count: _onboardingItems.length,
                     effect: ExpandingDotsEffect(
                       activeDotColor: colorScheme.primary,
-                      dotColor: colorScheme.primary.withOpacity(0.2),
+                      dotColor: colorScheme.primary.withValues(alpha: 0.2),
                       dotHeight: 8,
                       dotWidth: 8,
                       expansionFactor: 3,
@@ -254,7 +222,7 @@ class OnboardingPageContent extends StatelessWidget {
                   // Dynamic background patterns
                   Positioned.fill(
                     child: OnboardingBackgroundPattern(
-                      color: colorScheme.primary.withOpacity(0.05),
+                      color: colorScheme.primary.withValues(alpha: 0.05),
                     ),
                   ),
 
@@ -310,7 +278,7 @@ class OnboardingPageContent extends StatelessWidget {
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.1),
+        color: colorScheme.primary.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(item.iconData, size: 60, color: colorScheme.primary),

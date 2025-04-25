@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tononkira_mobile/data/database_helper.dart';
 import 'package:tononkira_mobile/models/models.dart';
+import 'package:tononkira_mobile/shared/loader.dart';
 
 /// A beautiful lyrics tab screen displaying all available lyrics with filtering options
 class LyricsTab extends StatefulWidget {
@@ -19,85 +24,231 @@ class _LyricsTabState extends State<LyricsTab> {
   SortOption _sortOption = SortOption.title;
   String _searchQuery = '';
 
-  // Sample data for demonstration
-  final List<Song> _songs = List.generate(
-    50,
-    (index) => Song(
-      id: index + 1,
-      title: _generateSongTitle(index),
-      slug: "song-${index + 1}",
-      views: 100 + (index * 10),
-      createdAt: DateTime.now().subtract(Duration(days: index)),
-      updatedAt: DateTime.now(),
-      artists: [
-        Artist(
-          id: (index % 5) + 1,
-          name: _generateArtistName(index % 5),
-          slug: "artist-${(index % 5) + 1}",
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ],
-    ),
-  );
+  // Search state
+  bool _isSearching = false;
+  List<Song> _searchResults = [];
+  Timer? _debounce;
+  final FocusNode _searchFocusNode = FocusNode();
 
-  // Generate song titles for sample data
-  static String _generateSongTitle(int index) {
-    final titles = [
-      "Veloma",
-      "Tsy Haiko",
-      "Ianao",
-      "Nofy Ratsy",
-      "Embona",
-      "Tonga Soa",
-      "Lasa Ny Andro",
-      "Tsara Ny Mino",
-      "Ho Avy Aho",
-      "Fitiavana",
-      "Tanindrazana",
-      "Tiana Ianao",
-      "Miandry Anao",
-      "Misaotra",
-      "Tsy Ampy",
-      "Mba Jereo",
-      "Fitia Tsy Miova",
-      "Izao no Izy",
-      "Tsy Very",
-      "Mandalo",
-    ];
-    return "${titles[index % titles.length]} ${index + 1}";
+  // Songs data
+  List<Song> _songs = [];
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  final int _pageSize = 500;
+  int _currentPage = 0;
+  bool _hasMoreData = true;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSongs();
+    _scrollController.addListener(_scrollListener);
+    _searchController.addListener(_onSearchChanged);
+    _searchFocusNode.addListener(_onFocusChanged);
   }
 
-  // Generate artist names for sample data
-  static String _generateArtistName(int index) {
-    final artists = [
-      "Mahaleo",
-      "Ambondrona",
-      "Ny Ainga",
-      "Tarika Johary",
-      "Njakatiana",
-    ];
-    return artists[index];
+  void _onFocusChanged() {
+    if (_searchFocusNode.hasFocus) {
+      setState(() {
+        _isSearching = true;
+        _showSearchBar = true;
+      });
+    }
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (_searchController.text.length >= 2) {
+        _performSearch(_searchController.text);
+      } else if (_searchController.text.isEmpty) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = _searchFocusNode.hasFocus;
+          // Reset to normal song list when search is cleared
+          _searchQuery = '';
+        });
+      }
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() {
+      _isSearching = true;
+      _searchQuery = query;
+    });
+
+    final db = await DatabaseHelper.instance.database;
+
+    try {
+      // Complex query that searches across songs, artists and lyrics
+      final results = await db.rawQuery(
+        '''
+        SELECT DISTINCT s.id, s.title, s.slug, s.views, s.createdAt, s.updatedAt 
+        FROM Song s
+        LEFT JOIN _ArtistToSong ats ON s.id = ats.B
+        LEFT JOIN Artist a ON a.id = ats.A
+        LEFT JOIN Lyric l ON l.id = s.lyricId
+        WHERE 
+          s.title LIKE ? OR 
+          a.name LIKE ? OR 
+          (l.content LIKE ? OR l.contentText LIKE ?)
+        LIMIT 100
+      ''',
+        ['%$query%', '%$query%', '%$query%', '%$query%'],
+      );
+
+      // Transform raw data to Song objects
+      final songs = await DatabaseHelper.instance.transformSongsData(results);
+
+      setState(() {
+        _searchResults = songs;
+      });
+    } catch (e) {
+      dev.log('Search error: $e');
+      setState(() {
+        _searchResults = [];
+      });
+    }
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent * 0.8 &&
+        !_isLoadingMore &&
+        _hasMoreData) {
+      _loadMoreSongs();
+    }
+  }
+
+  Future<void> _loadSongs() async {
+    setState(() {
+      _isLoading = true;
+      _currentPage = 0;
+      _songs = [];
+    });
+
+    await _fetchSongsPage();
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _loadMoreSongs() async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    await _fetchSongsPage();
+
+    setState(() {
+      _isLoadingMore = false;
+    });
+  }
+
+  Future<void> _fetchSongsPage() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+
+      // Determine sort field based on current settings
+      String orderBy;
+      switch (_sortOption) {
+        case SortOption.title:
+          orderBy =
+              'title ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'}';
+          break;
+        case SortOption.artist:
+          orderBy =
+              'title ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'}'; // Will sort by artist later in memory
+          break;
+        case SortOption.views:
+          orderBy =
+              'views ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'} NULLS LAST';
+          break;
+        case SortOption.date:
+          orderBy =
+              'created_at ${_sortDirection == SortDirection.ascending ? 'ASC' : 'DESC'}';
+          break;
+      }
+
+      final songsData = await db.query(
+        DatabaseHelper.kDbSongTableName,
+        orderBy: orderBy,
+        limit: _pageSize,
+        offset: _currentPage * _pageSize,
+      );
+
+      final newSongs = await DatabaseHelper.instance.transformSongsData(
+        songsData,
+      );
+
+      // Handle popular filter directly in the query for better performance
+      if (_currentFilter == 'popular') {
+        final popularSongsData = await db.query(
+          DatabaseHelper.kDbSongTableName,
+          orderBy: 'views DESC NULLS LAST',
+          limit: _pageSize,
+        );
+        final popularSongs = await DatabaseHelper.instance.transformSongsData(
+          popularSongsData,
+        );
+        setState(() {
+          _songs = popularSongs;
+          _hasMoreData = popularSongsData.length == _pageSize;
+        });
+        return;
+      }
+
+      setState(() {
+        if (_currentPage == 0) {
+          _songs = newSongs;
+        } else {
+          _songs.addAll(newSongs);
+        }
+        _currentPage++;
+        _hasMoreData = newSongs.length == _pageSize;
+      });
+    } catch (e) {
+      dev.log('Error loading songs: $e');
+      setState(() {
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    _debounce?.cancel();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
   // Filter and sort songs based on current settings
   List<Song> _getFilteredAndSortedSongs() {
-    List<Song> filteredSongs = List<Song>.from(_songs);
-
-    // Apply filter
-    if (_currentFilter == 'popular') {
-      filteredSongs.sort((a, b) => b.views?.compareTo(a.views ?? 0) ?? 0);
-      return filteredSongs; // No additional sorting needed for popular filter
+    // If we're searching and have search results, return those
+    if (_isSearching && _searchResults.isNotEmpty) {
+      return _searchResults;
     }
 
-    // Apply search if needed
-    if (_searchQuery.isNotEmpty) {
+    if (_songs.isEmpty) return [];
+
+    List<Song> filteredSongs = List<Song>.from(_songs);
+
+    // Apply filter - popular filter is handled directly in the query
+    if (_currentFilter == 'popular') {
+      return filteredSongs; // Already sorted in the query
+    }
+
+    // Apply search if needed (basic in-memory search)
+    if (_searchQuery.isNotEmpty && !_isSearching) {
       filteredSongs =
           filteredSongs.where((song) {
             return song.title.toLowerCase().contains(
@@ -111,15 +262,8 @@ class _LyricsTabState extends State<LyricsTab> {
           }).toList();
     }
 
-    // Apply sorting
-    if (_sortOption == SortOption.title) {
-      filteredSongs.sort(
-        (a, b) =>
-            _sortDirection == SortDirection.ascending
-                ? a.title.compareTo(b.title)
-                : b.title.compareTo(a.title),
-      );
-    } else if (_sortOption == SortOption.artist) {
+    // Artist sorting needs to be handled in memory since it involves relationships
+    if (_sortOption == SortOption.artist) {
       filteredSongs.sort((a, b) {
         final artistA = a.artists.isNotEmpty ? a.artists.first.name : '';
         final artistB = b.artists.isNotEmpty ? b.artists.first.name : '';
@@ -127,20 +271,6 @@ class _LyricsTabState extends State<LyricsTab> {
             ? artistA.compareTo(artistB)
             : artistB.compareTo(artistA);
       });
-    } else if (_sortOption == SortOption.views) {
-      filteredSongs.sort(
-        (a, b) =>
-            _sortDirection == SortDirection.ascending
-                ? (a.views ?? 0).compareTo(b.views ?? 0)
-                : (b.views ?? 0).compareTo(a.views ?? 0),
-      );
-    } else if (_sortOption == SortOption.date) {
-      filteredSongs.sort(
-        (a, b) =>
-            _sortDirection == SortDirection.ascending
-                ? a.createdAt.compareTo(b.createdAt)
-                : b.createdAt.compareTo(a.createdAt),
-      );
     }
 
     return filteredSongs;
@@ -159,17 +289,25 @@ class _LyricsTabState extends State<LyricsTab> {
             // Custom app bar with animations
             _buildAppBar(context),
 
-            // Main songs list
+            // Main content - either search results or normal song list
             Expanded(
               child:
-                  filteredSongs.isEmpty
+                  _isLoading
+                      ? _buildLoadingState()
+                      : filteredSongs.isEmpty
                       ? _buildEmptyState(context)
+                      : _isSearching && _searchResults.isNotEmpty
+                      ? _buildSearchResultsList(filteredSongs)
                       : _buildSongsList(filteredSongs),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(child: Loader(width: 150));
   }
 
   Widget _buildAppBar(BuildContext context) {
@@ -220,6 +358,8 @@ class _LyricsTabState extends State<LyricsTab> {
                       if (!_showSearchBar) {
                         _searchController.clear();
                         _searchQuery = '';
+                        _isSearching = false;
+                        _searchResults.clear();
                       }
                     });
                   },
@@ -241,17 +381,61 @@ class _LyricsTabState extends State<LyricsTab> {
                 _showSearchBar
                     ? Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: SearchBar(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                      ),
+                      child: _buildPowerSearchBar(),
                     )
                     : const SizedBox.shrink(),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPowerSearchBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              decoration: InputDecoration(
+                hintText: 'Search for lyrics, artists, content...',
+                border: InputBorder.none,
+                hintStyle: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ),
+          if (_searchController.text.isNotEmpty)
+            IconButton(
+              icon: Icon(Icons.close, color: colorScheme.primary),
+              onPressed: () {
+                setState(() {
+                  _searchController.clear();
+                  _searchQuery = '';
+                  _isSearching = false;
+                  _searchResults.clear();
+                });
+              },
+              tooltip: 'Clear search',
+            )
+          else
+            IconButton(
+              icon: Icon(Icons.mic, color: colorScheme.primary),
+              onPressed: () {},
+              tooltip: 'Voice search',
+            ),
         ],
       ),
     );
@@ -318,26 +502,36 @@ class _LyricsTabState extends State<LyricsTab> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    final message =
+        _isSearching
+            ? 'No results found for "${_searchController.text}"'
+            : 'No lyrics found';
+
+    final subMessage =
+        _isSearching
+            ? 'Try different search terms or filters'
+            : 'Try changing your filter or search terms';
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.music_note_outlined,
+            _isSearching ? Icons.search_off : Icons.music_note_outlined,
             size: 80,
-            color: colorScheme.primary.withOpacity(0.5),
+            color: colorScheme.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
-            'No lyrics found',
+            message,
             style: textTheme.titleLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'Try changing your filter or search terms',
+            subMessage,
             style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -348,11 +542,16 @@ class _LyricsTabState extends State<LyricsTab> {
 
   Widget _buildSongsList(List<Song> songs) {
     return ListView.separated(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       separatorBuilder:
           (context, index) => const Divider(height: 1, indent: 70),
-      itemCount: songs.length,
+      itemCount: songs.length + (_hasMoreData ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index == songs.length) {
+          return _buildLoadMoreIndicator();
+        }
+
         final song = songs[index];
         return SongListTile(
           song: song,
@@ -363,6 +562,123 @@ class _LyricsTabState extends State<LyricsTab> {
               ),
         );
       },
+    );
+  }
+
+  Widget _buildSearchResultsList(List<Song> searchResults) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      itemCount: searchResults.length,
+      itemBuilder: (context, index) {
+        final song = searchResults[index];
+        // Enhanced search result item with highlighting
+        return _buildSearchResultItem(song, index);
+      },
+    );
+  }
+
+  Widget _buildSearchResultItem(Song song, int index) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Staggered animation for search results
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      transform: Matrix4.translationValues(0, 0, 0),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child:
+                song.artists.isNotEmpty && song.artists.first.imageUrl != null
+                    ? Image.network(
+                      song.artists.first.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: colorScheme.primaryContainer,
+                          child: Center(
+                            child: Text(
+                              song.artists.first.name
+                                  .substring(0, 1)
+                                  .toUpperCase(),
+                              style: TextStyle(
+                                color: colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 24,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                    : Container(
+                      color: colorScheme.primaryContainer,
+                      child: Center(
+                        child: Text(
+                          song.artists.isNotEmpty
+                              ? song.artists.first.name
+                                  .substring(0, 1)
+                                  .toUpperCase()
+                              : "U",
+                          style: TextStyle(
+                            color: colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+          ),
+        ),
+        title: Text(
+          song.title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        subtitle:
+            song.artists.isNotEmpty
+                ? Text(
+                  song.artists.first.name,
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                )
+                : null,
+        trailing: IconButton(
+          icon: Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          onPressed: () => _navigateToLyricDetails(song),
+        ),
+        onTap: () => _navigateToLyricDetails(song),
+      ),
+    );
+  }
+
+  void _navigateToLyricDetails(Song song) {
+    context.pushNamed(
+      'lyricDetails',
+      pathParameters: {'id': song.id.toString()},
+    );
+  }
+
+  Widget _buildLoadMoreIndicator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16.0),
+      child: Center(
+        child: SizedBox(height: 30, width: 30, child: Loader(width: 80)),
+      ),
     );
   }
 
@@ -392,6 +708,8 @@ class _LyricsTabState extends State<LyricsTab> {
                         _sortOption = SortOption.views;
                         _sortDirection = SortDirection.descending;
                       }
+                      // Reload songs with new filter
+                      _loadSongs();
                     });
                     Navigator.pop(context);
                   },
@@ -406,6 +724,8 @@ class _LyricsTabState extends State<LyricsTab> {
                       _sortOption = option;
                       // When changing sort option, reset to "all" filter
                       _currentFilter = 'all';
+                      // Reload songs with new sorting
+                      _loadSongs();
                     });
                   },
                   onSortDirectionChanged: (direction) {
@@ -416,6 +736,8 @@ class _LyricsTabState extends State<LyricsTab> {
                       _sortDirection = direction;
                       // When changing sort direction, reset to "all" filter
                       _currentFilter = 'all';
+                      // Reload songs with new direction
+                      _loadSongs();
                     });
                   },
                   onApplySelected: () {
@@ -456,8 +778,8 @@ class SearchBar extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-          color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Row(
@@ -472,7 +794,7 @@ class SearchBar extends StatelessWidget {
                   hintText: 'Search for songs or artists...',
                   border: InputBorder.none,
                   hintStyle: TextStyle(
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -522,7 +844,7 @@ class SongListTile extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       colorScheme.primaryContainer,
-                      colorScheme.primary.withOpacity(0.5),
+                      colorScheme.primary.withValues(alpha: 0.5),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -562,62 +884,11 @@ class SongListTile extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // View counter with icon
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.remove_red_eye_outlined,
-                        size: 16,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatViews(song.views ?? 0),
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // More options button
-                  SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        Icons.more_vert,
-                        size: 18,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      onPressed: () {
-                        // Show options menu
-                      },
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  // Format view count for display (e.g., 1.2K, 3.5M)
-  String _formatViews(int views) {
-    if (views >= 1000000) {
-      return '${(views / 1000000).toStringAsFixed(1)}M';
-    } else if (views >= 1000) {
-      return '${(views / 1000).toStringAsFixed(1)}K';
-    } else {
-      return views.toString();
-    }
   }
 }
 
@@ -662,7 +933,7 @@ class FilterBottomSheet extends StatelessWidget {
             height: 4,
             width: 40,
             decoration: BoxDecoration(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -856,7 +1127,7 @@ class FilterBottomSheet extends StatelessWidget {
                 icon,
                 color:
                     isDisabled
-                        ? colorScheme.onSurface.withOpacity(0.38)
+                        ? colorScheme.onSurface.withValues(alpha: 0.38)
                         : isSelected
                         ? colorScheme.onPrimaryContainer
                         : colorScheme.onSurface,
@@ -868,7 +1139,7 @@ class FilterBottomSheet extends StatelessWidget {
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color:
                       isDisabled
-                          ? colorScheme.onSurface.withOpacity(0.38)
+                          ? colorScheme.onSurface.withValues(alpha: 0.38)
                           : isSelected
                           ? colorScheme.onPrimaryContainer
                           : colorScheme.onSurface,
@@ -909,7 +1180,7 @@ class FilterBottomSheet extends StatelessWidget {
                 icon,
                 color:
                     isDisabled
-                        ? colorScheme.onSurface.withOpacity(0.38)
+                        ? colorScheme.onSurface.withValues(alpha: 0.38)
                         : isSelected
                         ? colorScheme.onPrimaryContainer
                         : colorScheme.onSurface,
@@ -921,7 +1192,7 @@ class FilterBottomSheet extends StatelessWidget {
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color:
                       isDisabled
-                          ? colorScheme.onSurface.withOpacity(0.38)
+                          ? colorScheme.onSurface.withValues(alpha: 0.38)
                           : isSelected
                           ? colorScheme.onPrimaryContainer
                           : colorScheme.onSurface,

@@ -49,4 +49,6 @@ app.*.map.json
 
 .vscode/
 
-assets/csv/
+assets/sql/
+
+android/app/google-services.json
